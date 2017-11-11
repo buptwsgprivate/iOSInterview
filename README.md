@@ -322,6 +322,51 @@ initialize: 当一个类，或是它的子类在接收到第一个消息之前�
 ```
 
 ### Method Swizzle的实质是什么？
-该特性的实质是，修改selector和IMP的对应关系。
+该特性的实质是，为类添加一个新的方法，然后将目标方法和新的方法的IMP进行互换，结果就是修改selector和IMP的对应关系。
 
+### Block深入
+Block本身是对象，下图描述了Block对象的内存而已：  
+![Block对象内存布局](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/Block_Layout.png)
+
+在内存布局中，最重要的就是invoke变量，这是一个函数指针，指向Block的实现代码，函数原型至少要接受一个void*型的参数，此参数代表块。
+
+descriptor变量是指向结构体的指针，每个块里都包含此结构体，其中声明了块对象的总体大小，还声明了copy与dispose这两个辅助函数所对应的函数指针。辅助函数在拷贝及丢弃块对象时运行，其中会执行一些操作，比方说，前者要保留捕获的对象，而后者则将之释放。  
+
+块还会把它所捕获的所有变量都拷贝一份。这些拷贝放在descriptor变量后面，捕获了多少个变量，就要占据多少内存空间。请注意，拷贝的并不是对象本身，而是指向这些对象的指针变量。invoke函数为何需要把块对象作为参数传进来呢？原因就在于，执行块时，要从内存中把这些捕获到的变量读出来。
+
+全局Block  
+
+```
+    void (^globalBlock)(void) = ^{
+        NSLog(@"This is a block");
+    };
+    NSLog(@"global block is kind of class: %@", [globalBlock class]);
+```
+输出：global block is kind of class: __NSGlobalBlock__
+
+上面定义的globalBlock，因为没有捕捉任何状态（比如外围的变量等），运行时也无须有状态来参与。块所使用的整个内存区域，在编译期已经完全确定了，因此，全局块可以声明在全局内存里，而不需要在每次用到的时候于栈中创建。这种块实际上相当于单例。
+
+堆上的Block
+
+```
+    void (^block)(void) = ^{
+            NSLog(@"self = %@", self);
+        };
+    block();
+    NSLog(@"block is kind of class: %@", [block class]);
+```
+输出：block is kind of class: __NSMallocBlock__  
+上面定义的block，因为在内部捕捉了self，就从全局Block变成了堆上的Block。
+
+栈上的Block
+Block在定义的时候，其所占的内存区域是分配在栈中的。  
+
+```
+CGFloat f = 1.1;
+NSLog(@"%@", ^{NSLog(@"%lf",f);});
+NSLog(@"%@",[^{NSLog(@"%lf",f);} copy]);
+void(^deliveryBlock)(void) = ^{NSLog(@"%lf",f);};
+NSLog(@"%@", deliveryBlock);
+```
+经打印得知，只有第一次打印输出类型为__NSStackBlock__, 其它的两次都变成了__NSMallocBlock__。所以栈上的Block，在ARC环境下，一经赋值，copy，参数传递，就都变成了堆上的Block。  
 
