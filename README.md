@@ -1,6 +1,6 @@
 # 大标题
 ## 问答题
-### 1.说说ARC和MRC的区别
+### 说说ARC和MRC的区别
 ARC: 自动引用计数， MRC：手动引用计数  
 在MRC时代，开发者通过retain, release, autorelease这些函数，手动的控制引用计数。  
 而ARC将开发者从这个工作中解放出来，在编译期间，自动插入这些函数调用。  
@@ -9,9 +9,9 @@ ARC引入了一些新的修饰关键字，如strong, weak。
 不管是ARC还是MRC，内存管理的方式并没有改变。
   
 
-### 2.线程同步工具都有哪些？
+### 线程同步工具都有哪些？
 主要有：Atomic Operations, Lock和Condition。  GCD中的group, barrier, semaphore也是用来在GCD中做同步的。
-#### 2.1 Atomic Operations  
+#### 1. Atomic Operations  
 系统提供了一些原子性的数学运算和逻辑运算函数，声明在/usr/include/libkern/OSAtomic.h中。  原子操作的性能比锁要高。  
 这些函数分为以下类别：  
 Add: Adds two integer values together and stores the result in one of the specified variables.  
@@ -24,7 +24,7 @@ Compare and swap:
 Test and set:   
 Test and clear:    
 
-#### 2.2 Using Locks  
+#### 2. Using Locks  
 * Using a POSIX Mutex Lock   
 
 ```
@@ -121,7 +121,7 @@ while (true)
 }
 ```
 
-#### 2.3 Using Conditions  
+#### 3. Using Conditions  
 一种特殊类型的锁，主要是用来同步操作执行的顺序。  
 A condition object acts as both a lock and a checkpoint in a given thread. The lock protects your code while it tests the condition and performs the task triggered by the condition. The checkpoint behavior requires that the condition be true before the thread proceeds with its task. While the condition is not true, the thread blocks. It remains blocked until another thread signals the condition object.  
 The semantics for using an NSCondition object are as follows:  
@@ -156,7 +156,7 @@ timeToDoWork++;
 ```
 一次signal调用只能唤醒一个线程，而broadcoast则能唤醒所有的线程。
 
-### 3.Lock与Condition的区别是什么？  
+### Lock与Condition的区别是什么？  
 一个Lock只能由一个线程加锁成功，其它的线程必须等待，直到其它线程释放锁。
 Condition相当于Lock + Condition，可以由多个线程加锁成功，加锁成功以后还需要检查condition是否满足，不满足的话需要一直wait。
 
@@ -195,7 +195,7 @@ typedef id _Nullable (*IMP)(id _Nonnull, SEL _Nonnull, ...);
 
 ```
 ### .实例，类，元类的关系图   
-![实例，类，元类关系图](https://github.com/buptwsg/iOSInterview/blob/master/Images/instance_class_metaclass.png)
+![实例，类，元类关系图](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/instance_class_metaclass.png)
 
 ### OC的消息转发过程
 如果向一个对象发送一个不支持的消息，那么默认的实现是会调用NSObject类中的doesNotRecognizeSelector:方法，此方法会抛出异常，导致应用崩溃。
@@ -234,15 +234,52 @@ void dynamicAdditionMethodIMP(id self, SEL _cmd) {
 ```
 
 **第2次 - (id)forwardingTargetForSelector:(SEL)aSelector;**
-可以override这个函数，返回其它的能处理这个消息的对象。
+可以override这个函数，返回其它的能处理这个消息的对象。  
+
+```
+@implementation TestClass
+- (void)logString:(NSString *)str {
+    NSLog(@"log string: %@", str);
+}
+@end
+
+self.tc = [TestClass new];
+//self并没有logString:这个方法，如果不处理转发，则会崩溃。
+[self performSelector: @selector(logString:) withObject: @"Hello"];
+
+- (id)forwardingTargetForSelector:(SEL)aSelector {
+    if (aSelector == @selector(logString:)) {
+        return self.tc;
+    }
+    
+    return [super forwardingTargetForSelector: aSelector];
+}   
+```
 
 **第3次 完整转发流程**
 
 ```
-- (void)forwardInvocation: (NSInvocation*)invocation;
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)sel;
+- (NSMethodSignature*)methodSignatureForSelector:(SEL)aSelector {
+    if (aSelector == @selector(logString:)) {
+        return [self.tc methodSignatureForSelector: aSelector];
+    }
+    return [super methodSignatureForSelector: aSelector];
+}
+
+- (void)forwardInvocation:(NSInvocation *)anInvocation {
+    SEL aSelector = [anInvocation selector];
+    if ([self.tc respondsToSelector: aSelector]) {
+        [anInvocation invokeWithTarget: self.tc];
+    }
+    else {
+        [super forwardInvocation: anInvocation];
+    }
+ }
 ```
 完整的转发流程，代价比较高。
+
+用图来总结：  
+![消息转发](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/message_forwarding.png)
 
 ### weak如何实现
 runtime对注册的类会进行布局，对于weak修饰的对象会放入一个hash表中。用weak指向的对象内存地址作为key，当此对象的引用计数为0的时候会dealloc，假如weak指向的对象内存地址是a，那么就会以a为键在这个weak表中搜索，找到所有以a为键的weak对象，从而设置为nil。
@@ -252,3 +289,19 @@ atomic只能保证单步操作的原子性，因此，对于简单的赋值或�
 一旦涉及到多步骤的操作，还是需要lock等其它的同步机制来确保线程安全。
 
 ### 分类(Category)中定义了和原有方法重名的方法，会是什么效果？
+
+### +initialize和+load都是什么？有什么区别？
+load:     
+      当一个类或是分类被加载进runtime的时候，会被调用load方法。  
+      父类的load方法先被调用，子类的load方法之后被调用。   
+      分类的load方法在类的load方法之后被调用。    
+      
+initialize: 当一个类，或是它的子类在接收到第一个消息之前，这个类都会收到initialize消息。  
+            父类先收到消息，然后是子类。
+            每个类只会收到一次，分类不会收到。    
+            
+顺序：先是load，然后是initialize。
+         
+### 讲一下NSObject基类中的isEqual:和hash
+
+
