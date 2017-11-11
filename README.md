@@ -334,7 +334,7 @@ descriptor变量是指向结构体的指针，每个块里都包含此结构体�
 
 块还会把它所捕获的所有变量都拷贝一份。这些拷贝放在descriptor变量后面，捕获了多少个变量，就要占据多少内存空间。请注意，拷贝的并不是对象本身，而是指向这些对象的指针变量。invoke函数为何需要把块对象作为参数传进来呢？原因就在于，执行块时，要从内存中把这些捕获到的变量读出来。
 
-全局Block  
+* 全局Block  
 
 ```
     void (^globalBlock)(void) = ^{
@@ -346,7 +346,7 @@ descriptor变量是指向结构体的指针，每个块里都包含此结构体�
 
 上面定义的globalBlock，因为没有捕捉任何状态（比如外围的变量等），运行时也无须有状态来参与。块所使用的整个内存区域，在编译期已经完全确定了，因此，全局块可以声明在全局内存里，而不需要在每次用到的时候于栈中创建。这种块实际上相当于单例。
 
-堆上的Block
+* 堆上的Block
 
 ```
     void (^block)(void) = ^{
@@ -358,7 +358,7 @@ descriptor变量是指向结构体的指针，每个块里都包含此结构体�
 输出：block is kind of class: __NSMallocBlock__  
 上面定义的block，因为在内部捕捉了self，就从全局Block变成了堆上的Block。
 
-栈上的Block
+* 栈上的Block   
 Block在定义的时候，其所占的内存区域是分配在栈中的。  
 
 ```
@@ -369,4 +369,15 @@ void(^deliveryBlock)(void) = ^{NSLog(@"%lf",f);};
 NSLog(@"%@", deliveryBlock);
 ```
 经打印得知，只有第一次打印输出类型为__NSStackBlock__, 其它的两次都变成了__NSMallocBlock__。所以栈上的Block，在ARC环境下，一经赋值，copy，参数传递，就都变成了堆上的Block。  
+
+
+### 阴影的渲染为什么慢？Instruments在View渲染优化中的使用。
+如果只是简单的设置了shadowColor, shadowOffset, shadowOpacity等属性，那么Core Animation就得自己去计算阴影的形状。这会导致在渲染的时候，从GPU切换到CPU去计算阴影的形状，计算完成之后再切换回GPU。这种现象叫离屏渲染，降低性能。
+可以利用Simulator或Instruments去测试Core Animation的性能。如：  
+Color Blended Layers  
+Color Copied Images  
+Color Misaligned Images
+Color Off-screen Rendered
+
+
 
