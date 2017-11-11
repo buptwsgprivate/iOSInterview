@@ -289,6 +289,9 @@ atomic只能保证单步操作的原子性，因此，对于简单的赋值或�
 一旦涉及到多步骤的操作，还是需要lock等其它的同步机制来确保线程安全。
 
 ### 分类(Category)中定义了和原有方法重名的方法，会是什么效果？
+将分类中的方法加入类中这一操作，是在运行期系统加载分类时完成的。运行期系统会把分类中所实现的每个方法都加入类的方法列表中。如果类中本来就有此方法，而分类又实现了一次，那么分类中的方法会覆盖原来那一份实现代码。实际上可能会发生很多次覆盖，比如某个分类中的方法覆盖了“主实现”中的相关方法，而另外一个分类中的方法又覆盖了这个分类中的方法。多次覆盖的结果以最后一个分类为准。
+
+所以，最好的做法是为方法加前缀，避免发生覆盖。
 
 ### +initialize和+load都是什么？有什么区别？
 load:     
@@ -302,6 +305,23 @@ initialize: 当一个类，或是它的子类在接收到第一个消息之前�
             
 顺序：先是load，然后是initialize。
          
-### 讲一下NSObject基类中的isEqual:和hash
+### 讲一下NSObject协议中的isEqual:和hash
+* 若想检测对象的等同性，需要同时提供isEqual:和hash两个方法。
+* 相同的对象必须具有相同的哈希码，但是两个哈希码相同的对象却未必相同，这种情况发生时叫碰撞。
+* hash值用于确定对象在哈希表中的位置。
+* 不要盲目地爱个检测每条属性，而是应该依照具体需求来制定检测方案。
+* 编写hash方法时，应该使用性能好而且哈希码碰撞几率低的算法。一个例子是：
+
+```
+- (NSUInteger)hash {
+    NSUInteger firstNameHash = [_firstName hash];
+    NSUInteger lastNameHash = [_lastName hash];
+    NSUInteger ageHash = _age;
+    return firstNameHash ^ lastNameHash ^ ageHash;
+}
+```
+
+### Method Swizzle的实质是什么？
+该特性的实质是，修改selector和IMP的对应关系。
 
 
