@@ -379,5 +379,44 @@ Color Copied Images
 Color Misaligned Images
 Color Off-screen Rendered
 
+### KVC的原理
+Key-Value Coding:   
+通过key来访问一个对象的属性或是实例变量的值，而不是通过具体的访问方法。  
+直接或者间接继承自NSObject的类，都拥有这个能力，是因为NSObject类中提供了缺省的实现。  
+实现的原理就是，将key映射到真正的访问方法。  
+例如Setter方法的寻找：  
 
+* 找名字为set<Key>:或_set<Key>的方法，如果找到，调用之。  
+* 如果第1步没有找到，并且类方法accessInstanceVariablesDirectly返回YES(默认)，那么会按`_<Key>, _is<Key>, <Key>, is<Key>`的顺序去寻找实例变量。如果找到了，就将值直接设置到实例变量上。  
+* 如果最后没有找到，会去调用setValue:forUndefinedKey:。默认的实现是抛出异常，但是子类可以提供不同的行为。
+
+### KVO背后的原理
+原理：
+集合类型的能被监听吗？
+
+### 如何手动的触发KVO？
+
+```
+///Testing the value for change before providing notification  
+- (void)setBalance:(double)theBalance {
+    if (theBalance != _balance) {
+        [self willChangeValueForKey:@"balance"];
+        _balance = theBalance;
+        [self didChangeValueForKey:@"balance"];
+    }
+}
+```
+
+```
+//Implementation of manual observer notification in a to-many relationship  
+- (void)removeTransactionsAtIndexes:(NSIndexSet *)indexes {
+    [self willChange:NSKeyValueChangeRemoval
+        valuesAtIndexes:indexes forKey:@"transactions"];
+ 
+    // Remove the transaction objects at the specified indexes.
+ 
+    [self didChange:NSKeyValueChangeRemoval
+        valuesAtIndexes:indexes forKey:@"transactions"];
+}
+```
 
