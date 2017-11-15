@@ -392,9 +392,28 @@ Key-Value Coding:
 
 ### KVO背后的原理
 原理：
-集合类型的能被监听吗？
+集合类型的监听：
+假设有一个属性是可变数组类型，通过常规的方法，只能监听到数组被赋值的时候。如果想监听到里面的值被添加，删除，那么就得依赖于手动的触发KVO了。
 
 ### 如何手动的触发KVO？
+为了减少不必要的通知，或是为了将几个变化归为一组一起发出通知，可以覆写下面的类方法来告诉KVO，哪些key使用自动的触发。
+
+
+```
++ (BOOL)automaticallyNotifiesObserversForKey:(NSString *)theKey {
+ 
+    BOOL automatic = NO;
+    if ([theKey isEqualToString:@"balance"]) {
+        automatic = NO;
+    }
+    else {
+        automatic = [super automaticallyNotifiesObserversForKey:theKey];
+    }
+    return automatic;
+}
+```
+
+非集合类型的属性，比较简单，只用指定变化的key。
 
 ```
 ///Testing the value for change before providing notification  
@@ -406,6 +425,8 @@ Key-Value Coding:
     }
 }
 ```
+
+对于一个to-many类型的属性，  不但要指定变化的key，还要指定变化的类型和所涉及到的对象的索引集。
 
 ```
 //Implementation of manual observer notification in a to-many relationship  
