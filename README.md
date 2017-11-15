@@ -405,8 +405,17 @@ class
 dealloc  
 _isKVOA  
 
-猜想背后的实现原理：由于对象的isa指针发生了改变，所以在往对象发消息时，如果临时类能响应，那么由临时类负责响应；否则，还是由原来的类去响应。
-在临时类的setName:函数中，做了什么事情？  
+背后的实现原理：   
+当类Person的对象被观察时，KVO在运行时动态创建了一个Person类的子类：NSKVONotifying_Person，并为这个新的子类重写了被观察属性keyPath的setter方法。子类的setter方法会去负责通知观察者对象属性的改变。被观察的实例对象的isa指针被修改为指向新创建的子类。   
+子类中的setter方法的工作原理：
+
+```
+-(void)setName:(NSString *)newName{ 
+    [self willChangeValueForKey:@"name"];    //KVO 在调用存取方法之前总调用 
+    [super setValue:newName forKey:@"name"]; //调用父类的存取方法 
+    [self didChangeValueForKey:@"name"];     //KVO 在调用存取方法之后总调用
+}
+```
 
 集合类型的监听：
 假设有一个属性是可变数组类型，通过常规的方法，只能监听到数组被赋值的时候。如果想监听到里面的值被添加，删除，那么就得依赖于手动的触发KVO了。
@@ -442,7 +451,7 @@ _isKVOA
 }
 ```
 
-对于一个to-many类型的属性，  不但要指定变化的key，还要指定变化的类型和所涉及到的对象的索引集。
+对于一个to-many类型的属性，不但要指定变化的key，还要指定变化的类型和所涉及到的对象的索引集。
 
 ```
 //Implementation of manual observer notification in a to-many relationship  
