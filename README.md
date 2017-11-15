@@ -391,7 +391,23 @@ Key-Value Coding:
 * 如果最后没有找到，会去调用setValue:forUndefinedKey:。默认的实现是抛出异常，但是子类可以提供不同的行为。
 
 ### KVO背后的原理
-原理：
+原理：  
+假设self.man为Person类的对象，有如下的注册观察者的代码：  
+
+```
+[self.man addObserver: self forKeyPath: @"name" options: kNilOptions context: NULL];
+```
+如果我们在这一行打上断点，当断点停下来的时候，在控制台里运行```po self.man->isa```，那么会打印NSKVONotifying_Person，可以发现对象的isa指针被指向了一个运行期创建的类。但是运行```po [self.man class]```，却还是显示的Person。
+   
+使用运行时的class_copyMethodList方法，获取并打印临时类的方法列表，会打印出以下：  
+setName:  
+class  
+dealloc  
+_isKVOA  
+
+猜想背后的实现原理：由于对象的isa指针发生了改变，所以在往对象发消息时，如果临时类能响应，那么由临时类负责响应；否则，还是由原来的类去响应。
+在临时类的setName:函数中，做了什么事情？  
+
 集合类型的监听：
 假设有一个属性是可变数组类型，通过常规的方法，只能监听到数组被赋值的时候。如果想监听到里面的值被添加，删除，那么就得依赖于手动的触发KVO了。
 
