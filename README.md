@@ -466,3 +466,40 @@ _isKVOA
 }
 ```
 
+### 传值的几种方式？各自的使用场景是什么？
+* 通知：  
+* 代理：  
+* block:   
+* selector:  
+
+### NSUserDefaults都可以存储哪些数据类型？
+
+
+### CALayer和UIView
+* 为什么会有CALayer? 为了代码复用，在它之上，分别是NSView和UIView。  
+* 普通的视图的layer都是CALayer的实例，但可以通过覆写+(Class)layerClass这个方法，改变layer的类型。    
+* 树形结构：和UIView的树形结构类似，layer也有相应的树形结构。也可以在不添加视图的情况下，往layer上再添加子layer。  
+* 动画：没有与UIView相关联的layer，修改属性值时，会带有隐式动画。UIView自带的那个layer，隐式动画被关闭了，需要通过UIView的动画block，或是Core Animation来做动画。
+* 坐标系统：
+### CoreGraphics和CoreAnimation的区别和内容
+
+### 说说UIScrollView的原理
+
+### 数据库的数据迁移场景及实现
+
+
+### 什么是长连接？有没有优化方案？
+
+### 多线程下载文件实现方案？要能够支持暂停，重新开始。
+
+### GPU和CPU是如何协同工作的？
+
+### 网络优化方案都有哪些？
+
+### 电量优化方案都有哪些？
+
+## 算法相关
+### 反转二叉树，非递归
+
+### M个红球和N个黑球排序，有多少种排法？
+
