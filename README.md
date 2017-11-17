@@ -477,6 +477,12 @@ _isKVOA
 * selector:  
 例如UIGestureRecognizer, UIControl都有addTarget:action:之类的方法，支持添加多于一个的target, action，在需要时通过[target persormSelector]来回调。  
 
+### 简述一个进程的内存分区情况  
+1)代码区：存放函数二进制代码
+2)数据区：系统运行时申请内存并初始化，系统退出时由系统释放。存放全局变量、静态变量、常量
+3)堆区：通过malloc等函数或new等操作符动态申请得到，需程序员手动申请和释放
+4)栈区：函数模块内申请，函数结束时由系统自动释放。存放局部变量、函数参数
+
 ### NSUserDefaults都可以存储哪些数据类型？
 float, double, iteger, boolean, URL, NSData, NSString, NSNumber, NSDate, NSArray, NSDictionary.
 
@@ -505,7 +511,12 @@ float, double, iteger, boolean, URL, NSData, NSString, NSNumber, NSDate, NSArray
 从架构上来说，Core Graphics位于Core Animation的下方，如图所示：  
 ![架构](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/ca_architecture_2x.png)  
 
-Core Graphics也叫Quartz 2D, 是一个先进的，二维绘图引擎，可以工作于iOS, tvOS, macOS。   
+Core Graphics也叫Quartz 2D, 是一个先进的，二维绘图引擎，可以工作于iOS, tvOS, macOS。
+三个核心概念：  
+上下文： 主要用于描述图形写入哪里  
+路径：是在图层上绘制的内容  
+状态：  用于保存配置变换的值，填充和alpha值等。  
+
 个人的理解：UIView会去利用Core Graphics去绘制，绘制好的内容交给Core Animation去做渲染。  
 
 ### 说说UIScrollView的原理
