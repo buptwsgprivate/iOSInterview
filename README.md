@@ -468,20 +468,45 @@ _isKVOA
 
 ### 传值的几种方式？各自的使用场景是什么？
 * 通知：  
+使用Notification，可以在发送通知者和观察者之间解耦，观察者只需要知道通知的名字，以及通知中携带的参数即可。传值是通过userInfo来传一个字典。
 * 代理：  
-* block:   
+此种情况下，一般是A持有B，然后A遵从B制定的协议，实现代理方法。在代理方法中，可以自由的传值。  
+* block:  
+使用block，可以实现两种场景：回调；调用传入的block，来实现自身的逻辑。
+   
 * selector:  
+例如UIGestureRecognizer, UIControl都有addTarget:action:之类的方法，支持添加多于一个的target, action，在需要时通过[target persormSelector]来回调。  
 
 ### NSUserDefaults都可以存储哪些数据类型？
-
+float, double, iteger, boolean, URL, NSData, NSString, NSNumber, NSDate, NSArray, NSDictionary.
 
 ### CALayer和UIView
 * 为什么会有CALayer? 为了代码复用，在它之上，分别是NSView和UIView。  
+* UIView持有一个CALayer的实例，并实现了CALayerDelegate协议，CALayer的内容需要重新加载时，通过-drawLayer:inContext:或-displayLayer:方法，要求UIView提供内容。CALayer之后去管理这个内容。当然CALayer也有自己的一些可视属性。  
+* Core Animation是负责图形渲染和动画的框架。自身并不是一个绘制系统，它负责合成和操作一个应用的显示内容，并且利用GPU来实现硬件加速。  
+* 很多属性，如frame, position，在UIView层面上修改，也会作用于CALayer上。从这一点儿来看，UIView象是一个CALayer的包装。  
+* UIView还用来处理事件，参与职责链，一个APP并不能只用CALayer来去构建。  
 * 普通的视图的layer都是CALayer的实例，但可以通过覆写+(Class)layerClass这个方法，改变layer的类型。    
 * 树形结构：和UIView的树形结构类似，layer也有相应的树形结构。也可以在不添加视图的情况下，往layer上再添加子layer。  
 * 动画：没有与UIView相关联的layer，修改属性值时，会带有隐式动画。UIView自带的那个layer，隐式动画被关闭了，需要通过UIView的动画block，或是Core Animation来做动画。
-* 坐标系统：
+* 坐标系统：CALayer相比UIView多了一个anchorPoint属性，使用CGPoint结构表示，值域是[0 1]。这个点是各种图形变换的中心点，同时会决定layer的position的位置，缺省值是[0.5,0.5]。  
+
+### CALayer的三个树状结构
+不是指三个树状层级，而是指三个layer对象的集合。  
+
+* model layer tree     
+  这个集合里面的对象，存储了动画的目标值。平常我们都是和这里的对象打交道。  
+* presentation tree   
+  这个集合里面的对象，存储的是动画的执行过程中的即时值。  
+* render tree   
+  这个集合里面的对象，执行实际的动画，是核心动画的私有的。
+
 ### CoreGraphics和CoreAnimation的区别和内容
+从架构上来说，Core Graphics位于Core Animation的下方，如图所示：  
+![架构](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/ca_architecture_2x.png)  
+
+Core Graphics也叫Quartz 2D, 是一个先进的，二维绘图引擎，可以工作于iOS, tvOS, macOS。   
+个人的理解：UIView会去利用Core Graphics去绘制，绘制好的内容交给Core Animation去做渲染。  
 
 ### 说说UIScrollView的原理
 
