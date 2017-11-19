@@ -1,4 +1,4 @@
-# 大标题
+# iOS面试题汇总
 ## 问答题
 ### 说说ARC和MRC的区别
 ARC: 自动引用计数， MRC：手动引用计数  
@@ -517,7 +517,18 @@ Core Graphics也叫Quartz 2D, 是一个先进的，二维绘图引擎，可以�
 个人的理解：UIView会去利用Core Graphics去绘制，绘制好的内容交给Core Animation去做渲染。  
 
 ### 说说UIScrollView的原理
+scroll view的大小固定，但它的content view可以是任意的尺寸，contentSize属性表明了内容视图的大小。它上面添加了好几种手势，用来滚动内容视图。
+感觉这个题用来考新手的吧。  
 
+### UIWebView中注入JS时，获取到的JSContext为什么总是变化？
+```
+@implementation NSObject (magic)
+- (void) webView: (id) unused didCreateJavaScriptContext: (JSContext*) ctx forFrame: (id) frame
+{
+    // ...
+}
+@end
+```
 ### 数据库的数据迁移场景及实现
 
 ### 用户感觉卡顿后, 如何系统分析卡顿的原因？
