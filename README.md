@@ -520,15 +520,29 @@ Core Graphics也叫Quartz 2D, 是一个先进的，二维绘图引擎，可以�
 scroll view的大小固定，但它的content view可以是任意的尺寸，contentSize属性表明了内容视图的大小。它上面添加了好几种手势，用来滚动内容视图。
 感觉这个题用来考新手的吧。  
 
-### UIWebView中注入JS时，获取到的JSContext为什么总是变化？
+### UIWebView中注入JS时，获取JSContext的正确方法是什么？
+有一个简单的办法，可以拿到一个webview的JSContext:   
+
 ```
-@implementation NSObject (magic)
-- (void) webView: (id) unused didCreateJavaScriptContext: (JSContext*) ctx forFrame: (id) frame
-{
-    // ...
+JSContext *context = [self.webView valueForKeyPath:@"documentView.webView.mainFrame.javaScriptContext"];
+```
+即使我们在viewDidLoad和webViewDidFinishLoad方法中，利用上述方法获取JSContext，然后向其中注入Native Object，在某些情况下仍然会出问题：当在html进行页面跳转的时候，JS调用OC对象出现undefined.   
+
+从[这篇文章](http://www.codertian.com/2016/04/22/iOS-javascriptcore-call-native/)里，可以学习到正确的方法：  
+
+* 为NSObject添加一个分类，并实现下面的方法  
+
+```
+@implementation NSObject (JSTest)
+- (void)webView:(id)unuse didCreateJavaScriptContext:(JSContext *)ctx forFrame:(id)frame {
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"DidCreateContextNotification" object:ctx];
 }
 @end
 ```
+调用这个方法的时候WebKit就已经获取到了JSContext对象，在这个方法中我们发出一个通知，这个通知会把获取到的JSContext环境对象传递出去。
+
+* 
+
 ### 数据库的数据迁移场景及实现
 
 ### 用户感觉卡顿后, 如何系统分析卡顿的原因？
