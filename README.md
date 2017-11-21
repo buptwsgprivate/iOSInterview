@@ -527,7 +527,7 @@ scroll view的大小固定，但它的content view可以是任意的尺寸，con
 JSContext *context = [self.webView valueForKeyPath:@"documentView.webView.mainFrame.javaScriptContext"];
 ```
 即使我们在viewDidLoad和webViewDidFinishLoad方法中，利用上述方法获取JSContext，然后向其中注入Native Object，在某些情况下仍然会出问题：当在html进行页面跳转的时候，JS调用OC对象出现undefined.   
-
+webViewDidFinishLoad这个方法是在web的window.onload以后才调用（也就是html所有的资源已经加载和渲染结束后）,这就明了了，在JS调用OC的对象时，还没有注入。   
 从[这篇文章](http://www.codertian.com/2016/04/22/iOS-javascriptcore-call-native/)里，可以学习到正确的方法：  
 
 * 为NSObject添加一个分类，并实现下面的方法  
@@ -539,11 +539,87 @@ JSContext *context = [self.webView valueForKeyPath:@"documentView.webView.mainFr
 }
 @end
 ```
-调用这个方法的时候WebKit就已经获取到了JSContext对象，在这个方法中我们发出一个通知，这个通知会把获取到的JSContext环境对象传递出去。
+调用这个方法的时候WebKit就已经创建了JSContext对象，在这个方法中我们发出一个通知，这个通知会把获取到的JSContext环境对象传递出去。
 
-* 
+* 在WebViewController的viewDidLoad方法中观察通知  
+
+```
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didCreateJSContext:) name:@"DidCreateContextNotification" object:nil];
+    
+    NSURL *url = [[NSBundle mainBundle] URLForResource:@"test" withExtension:@"html"];
+    [self.webView loadRequest:[NSURLRequest requestWithURL:url]];
+}
+```
+
+* 在通知回调函数中判断JSContext对象是不是当前WebView的  
+
+```
+- (void)didCreateJSContext:(NSNotification *)notification {
+    NSString *indentifier = [NSString stringWithFormat:@"indentifier%lud", (unsigned long)self.webView.hash];
+    NSString *indentifierJS = [NSString stringWithFormat:@"var %@ = '%@'", indentifier, indentifier];
+    [self.webView stringByEvaluatingJavaScriptFromString:indentifierJS];
+    JSContext *context = notification.object;
+    //判断这个context是否属于当前这个webView
+    if (![context[indentifier].toString isEqualToString:indentifier]) return;
+    
+    _context = context;		//如果属于这个webView
+    MyJSObject *jsObject = [MyJSObject new];
+    _context[@"ttf"] = jsObject;	//将对象注入这个context中
+}
+```
 
 ### 数据库的数据迁移场景及实现
+* 在Core Data打开一个store的时候，如果老版本的格式，与新的模型不兼容，那么需要执行数据迁移，如果不执行，那么会发生崩溃。
+* Core Data会在store的metadata中存储一些Hash值，利用这些值，Core Data可以迅速的判断当前store的格式，是否与用来打开store的模型相匹配。  
+* Core Data也允许针对Entity或是Attribute设置一个hash modifier，来强制Hash值发生改变。一个例子：只是改变了一个属性的内部格式。
+* .xcdatamodeld文件实际上是一个文件包，里面包含了不同版本的model，每个由.xcdatamodel和Info.plist文件组成。在Xcode里，我们可以指定当前要使用哪个版本。
+* 在许多情况下，Core Data都可以执行自动的数据迁移，即lightweight migration。 Core Data基于源和目的managed object model的不同，会去推断出一个mapping model。  
+* 如果对一个Entity或是attribute进行了重新的命名，应该在新版本的model中，设置对应的renaming identifier。这样Core Data就可以知道新版本中的名字，对应的是旧版本中的哪个Entity或是attribute。  
+* 要想使用轻量级迁移，除了Core Data能够推断出mapping model之外，我们还应该请求Core Data去执行迁移。关键点就在于在调用addPersistentStoreWithType:configuration:URL:options:error: 方法的时候，传入两个选项：NSMigratePersistentStoresAutomaticallyOption和 NSInferMappingModelAutomaticallyOption, 值均设为YES。 代码如下：   
+
+```
+NSError *error = nil;
+NSURL *storeURL = <#The URL of a persistent store#>;
+NSPersistentStoreCoordinator *psc = <#The coordinator#>;
+NSDictionary *options = [NSDictionary dictionaryWithObjectsAndKeys:
+    [NSNumber numberWithBool:YES], NSMigratePersistentStoresAutomaticallyOption,
+    [NSNumber numberWithBool:YES], NSInferMappingModelAutomaticallyOption, nil];
+ 
+BOOL success = [psc addPersistentStoreWithType:<#Store type#>
+                    configuration:<#Configuration or nil#> URL:storeURL
+                    options:options error:&error];
+if (!success) {
+    // Handle the error.
+}
+```
+* 要想使用轻量级迁移，Core Data必须在运行期能够找到源和目的managed object models。默认是在NSBundle的allBundles和allFrameworks方法返回的位置。如果模型被存储在别的位置，那么我们就得自己去写代码产生mapping model，然后使用migration manager去发起迁移。示例代码如下：  
+
+```
+- (BOOL)migrateStore:(NSURL *)storeURL toVersionTwoStore:(NSURL *)dstStoreURL error:(NSError **)outError {
+ 
+    // Try to get an inferred mapping model.
+    NSMappingModel *mappingModel =
+        [NSMappingModel inferredMappingModelForSourceModel:[self sourceModel]
+                        destinationModel:[self destinationModel] error:outError];
+ 
+    // If Core Data cannot create an inferred mapping model, return NO.
+    if (!mappingModel) {
+        return NO;
+    }
+ 
+    // Create a migration manager to perform the migration.
+    NSMigrationManager *manager = [[NSMigrationManager alloc]
+        initWithSourceModel:[self sourceModel] destinationModel:[self destinationModel]];
+ 
+    BOOL success = [manager migrateStoreFromURL:storeURL type:NSSQLiteStoreType
+        options:nil withMappingModel:mappingModel toDestinationURL:dstStoreURL
+        destinationType:NSSQLiteStoreType destinationOptions:nil error:outError];
+ 
+    return success;
+}
+```
 
 ### 用户感觉卡顿后, 如何系统分析卡顿的原因？
 
