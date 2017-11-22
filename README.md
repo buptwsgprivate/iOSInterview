@@ -322,7 +322,7 @@ initialize: 当一个类，或是它的子类在接收到第一个消息之前�
 该特性的实质是，为类添加一个新的方法，然后将目标方法和新的方法的IMP进行互换，结果就是修改selector和IMP的对应关系。
 
 ### Block深入
-Block本身是对象，下图描述了Block对象的内存而已：  
+Block本身是对象，下图描述了Block对象的内存布局：  
 ![Block对象内存布局](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/Block_Layout.png)
 
 在内存布局中，最重要的就是invoke变量，这是一个函数指针，指向Block的实现代码，函数原型至少要接受一个void*型的参数，此参数代表块。
@@ -624,8 +624,18 @@ if (!success) {
 * 如果Core Data不能推断出Mapping model，那么就麻烦了，需要自己去定义。不过这个一般用不到，用到时再去看文档就可以。  
 
 ### 用户感觉卡顿后, 如何系统分析卡顿的原因？
+卡顿监控的实现一般有两种方案：  
+（1）主线程卡顿监控。通过子线程监测主线程的runLoop，判断两个状态区域之间的耗时是否达到一定阈值。具体原理和实现，[这篇文章](http://www.tanhao.me/code/151113.html/)介绍得比较详细。  
+（2）FPS监控。要保持流畅的UI交互，APP刷新率应当努力保持在60FPS。监控实现原理比较简单，通过记录两次刷新时间间隔，就可以计算出当前的FPS。  
+微信读书团队在实际应用过程中，发现上面两种方案，抖动都比较大。因此提出了一套综合的判断方法，结合了主线程监控，FPS监控，以及CPU使用率等指标，作为判断卡顿的标准。  
+
+![卡顿分析](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/wechat-stuck.jpeg)  
+
+iOS卡顿监测分析: http://blog.csdn.net/ycm1101743158/article/details/77508924  
+简单监测iOS卡顿的demo: http://blog.csdn.net/game3108/article/details/51147946
 
 ### 什么是长连接？有没有优化方案？
+http://www.hudongdong.com/ios/351.html
 
 ### 多线程下载文件实现方案？要能够支持暂停，重新开始。
 
