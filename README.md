@@ -635,11 +635,20 @@ iOS卡顿监测分析: http://blog.csdn.net/ycm1101743158/article/details/775089
 简单监测iOS卡顿的demo: http://blog.csdn.net/game3108/article/details/51147946
 
 ### 什么是长连接？有没有优化方案？
-http://www.hudongdong.com/ios/351.html
+TCP连接在长时间没有数据传输的时候，会断开连接。为了实现长连接，就要定期的发送心跳数据。所谓的长连接并没有什么高深的地方，就是想办法让一个TCP连接长时间的保持。  
+
+心跳包，通常是客户端每隔一小段时间向服务器发送的一个数据包，通知服务器自己仍然在线，并传输一些可能有必要的数据。因按照一定的时间间隔发送，类似于心跳，所以叫做心跳包。事实上为了保持长连接，至于包的内容，是没有特别规定的，不过一般都是很小的包，或者只是包含包头的一个空包。  
+
+在TCP协议的机制里面，本身是存在有心跳包机制的，也就是TCP协议中的SO_KEEPALIVE，系统默认是设置2小时的心跳频率。要用setsockopt将SOL_SOCKET.SO_KEEPALIVE设置为1才是打开，并且可以设置三个参数tcp_keepalive_time/tcp_keepalive_probes/tcp_keepalive_intvl，分别表示连接闲置多久开始发keepalive的ACK包、发几个ACK包不回复才当对方死了、两个ACK包之间间隔多长。  
+
+至于优化方案，这个通过Google搜索不到。  
 
 ### 多线程下载文件实现方案？要能够支持暂停，重新开始。
 
 ### GPU和CPU是如何协同工作的？
+关于两者的协同工作，[iOS核心动画高级技巧](https://zsisme.gitbooks.io/ios-/content/index.html)这本书里有讲，在第12章的第1节。里面讲述了渲染所涉及的6个阶段，只有最后一个阶段是由GPU执行的，并且只有前两个阶段是开发者可控的。但是就是在这前两个阶段，我们可以决定哪些由CPU执行，哪些交给GPU去执行。 
+
+这本书其实可以系统的一读，并加深学习。  
 
 ### 网络优化方案都有哪些？
 
