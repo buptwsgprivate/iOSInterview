@@ -665,6 +665,11 @@ SYN, ACK都是TCP报文头部中的标志位，为1表示被置。
 “三次握手”的目的是“为了防止已失效的连接请求报文段突然又传送到了服务端，因而产生错误”。“已失效的连接请求报文段”的产生在这样一种情况下：client发出的第一个连接请求报文段并没有丢失，而是在某个网络结点长时间的滞留了，以致延误到连接释放以后的某个时间才到达server。本来这是一个早已失效的报文段。但server收到此失效的连接请求报文段后，就误认为是client再次发出的一个新的连接请求。于是就向client发出确认报文段，同意建立连接。假设不采用“三次握手”，那么只要server发出确认，新的连接就建立了。由于现在client并没有发出建立连接的请求，因此不会理睬server的确认，也不会向server发送数据。但server却以为新的运输连接已经建立，并一直等待client发来数据。这样，server的很多资源就白白浪费掉了。采用“三次握手”的办法可以防止上述现象发生。例如刚才那种情况，client不会向server的确认发出确认。server由于收不到确认，就知道client并没有要求建立连接。”
 
 ### 如何防止网络劫持的发生？
+[iOS 客户端对于运营商劫持的一点点对抗方式](https://segmentfault.com/a/1190000009049544)  
+[NSURLProtocol：DNS劫持和Web资源本地化](http://www.qingpingshan.com/rjbc/ios/167550.html)  
+[可能是最全的iOS端HttpDns集成方案](http://dev.dafan.info/detail/378770?p=)  
+[移动开发构架漫谈——反劫持实战篇](http://blog.csdn.net/shaobo8910/article/details/46953007)  
+[iOS强制ATS后,DNS劫持问题如何解决?](http://www.itdadao.com/articles/c15a1171332p0.html)  
 
 ### 网络优化方案都有哪些？
 
