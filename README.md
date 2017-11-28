@@ -626,13 +626,25 @@ if (!success) {
 ### 用户感觉卡顿后, 如何系统分析卡顿的原因？
 卡顿监控的实现一般有两种方案：  
 （1）主线程卡顿监控。通过子线程监测主线程的runLoop，判断两个状态区域之间的耗时是否达到一定阈值。具体原理和实现，[这篇文章](http://www.tanhao.me/code/151113.html/)介绍得比较详细。  
+实现思路：开辟一个子线程，然后实时计算 kCFRunLoopBeforeSources 和 kCFRunLoopAfterWaiting 两个状态区域之间的耗时是否超过某个阀值，来断定主线程的卡顿情况，可以将这个过程想象成操场上跑圈的运动员，我们会每隔一段时间间隔去判断是否跑了一圈，如果发现在指定时间间隔没有跑完一圈，则认为在消息处理的过程中耗时太多，视为主线程卡顿。  
+当检测到了卡顿，下一步需要做的就是记录卡顿的现场，即此时程序的堆栈调用，可以借助开源库 PLCrashReporter 来实现。   
+
 （2）FPS监控。要保持流畅的UI交互，APP刷新率应当努力保持在60FPS。监控实现原理比较简单，通过记录两次刷新时间间隔，就可以计算出当前的FPS。  
 微信读书团队在实际应用过程中，发现上面两种方案，抖动都比较大。因此提出了一套综合的判断方法，结合了主线程监控，FPS监控，以及CPU使用率等指标，作为判断卡顿的标准。  
 
 ![卡顿分析](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/wechat-stuck.jpeg)  
 
-iOS卡顿监测分析: http://blog.csdn.net/ycm1101743158/article/details/77508924  
-简单监测iOS卡顿的demo: http://blog.csdn.net/game3108/article/details/51147946
+[iOS实时卡顿监控](http://www.tanhao.me/code/151113.html/)  
+[调研和整理](https://github.com/aozhimin/iOS-Monitor-Platform)   
+[iOS卡顿监测分析](http://blog.csdn.net/ycm1101743158/article/details/77508924)   
+[简单监测iOS卡顿的demo](http://blog.csdn.net/game3108/article/details/51147946)  
+
+### 如何检测后台线程中更新UI？
+从Xcode9开始，诊断选项里有个叫"Main Thread checker"的，默认是打开的，在程序运行期间，如果检测到了主线程之外的线程中更新UI，那么会在控制台中打出警告。但问题是，很多开发者选择无视，需要依赖于开发者的自觉，才能避免之类的问题。  
+
+也可以自己去实现一套机制，原理是通过hook UIView的-setNeedsLayout, -setNeedsDisplay, -setNeedsDisplayInRect三个方法，确保它们都是在主线程中执行。如果不是，那么让程序发生崩溃，可以强制开发者去修改。  
+
+### 有没有什么办法能够防止crash?
 
 ### 什么是长连接？有没有优化方案？
 TCP连接在长时间没有数据传输的时候，会断开连接。为了实现长连接，就要定期的发送心跳数据。所谓的长连接并没有什么高深的地方，就是想办法让一个TCP连接长时间的保持。  
@@ -688,6 +700,10 @@ URL域名解析成ip地址的过程被称作 DNS 解析。在这个过程中，�
 * DNS劫持   
   一般情况下，考虑DNS劫持大多发生在使用webview的时候。相较于使用网页，正常的网络请求，即便被劫持了无非是返回错误的数据，或者干脆404。   
   可以基于NSURLProtocol实现LocalDNS防劫持方案。 简单来说，在网页发起请求的时候获取请求域名，然后在本地进行解析得到ip，返回一个直接访问网页ip地址的请求。[DNS防劫持](http://sindrilin.com/apm/2017/03/31/DNS劫持/)这篇文章里有示例代码。     
+
+### 什么是组件化？如何实施呢？
+
+[iOS 组件化方案探索](https://wereadteam.github.io/2016/03/19/iOS-Component/)  
   
 ### 网络优化方案都有哪些？
 
