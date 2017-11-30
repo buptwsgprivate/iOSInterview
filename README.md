@@ -651,6 +651,35 @@ if (!success) {
 也可以自己去实现一套机制，原理是通过hook UIView的-setNeedsLayout, -setNeedsDisplay, -setNeedsDisplayInRect三个方法，确保它们都是在主线程中执行。如果不是，那么让程序发生崩溃，可以强制开发者去修改。  
 
 ### 有没有什么办法能够防止crash?
+可以看看这两篇文章：  
+[网易iOS App运行时Crash自动防护实践](https://mp.weixin.qq.com/s?__biz=MzA3ODg4MDk0Ng==&mid=2651113088&idx=1&sn=10b28d7fbcdf0def1a47113e5505728d&chksm=844c6f5db33be64b57fc9b4013cdbb7122d7791f3bbca9b4b29e80cce295eb341b03a9fc0f2f&mpshare=1&scene=23&srcid=0207njmGS2HWHI0BZmpjNKhv%23rd)  
+[XXShield实现防止iOS APP Crash和捕获异常状态下的崩溃信息](http://java.ctolib.com/ValiantCat-XXShield.html)  
+
+unrecognized selector: 
+可以利用运行时的消息转发机制，重写forwardingTargetForSelector方法，做以下几步的处理：  
+
+* 动态创建一个桩类
+* 动态为桩类添加对应的Selector，用一个通用的返回0的函数来实现该SEL的IMP
+* 将消息直接转发到这个桩类对象上。  
+流程图如下：   
+
+![流程图](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/performSelector.png)  
+
+
+KVO：  
+容易出现崩溃的地方：忘记了移除观察者；没有添加就去移除；重复添加后导致添加/移除次数不匹配；
+
+定时器：  
+由于定时器对target进行了强引用，容易造成循环引用，一是造成内存不释放，二是不释放的对象在定时器被触发时执行代码，很有可能导致崩溃。  
+使用weak proxy解决。  
+
+容器类：  
+采用分类吧，这样可以不用hook系统的方法。 
+数组:  
+字典：  
+NSCache:  
+
+NSString: 哪些情况容易崩？  
 
 ### 什么是长连接？有没有优化方案？
 TCP连接在长时间没有数据传输的时候，会断开连接。为了实现长连接，就要定期的发送心跳数据。所谓的长连接并没有什么高深的地方，就是想办法让一个TCP连接长时间的保持。  
