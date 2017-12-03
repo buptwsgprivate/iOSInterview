@@ -658,13 +658,9 @@ if (!success) {
 unrecognized selector: 
 可以利用运行时的消息转发机制，重写forwardingTargetForSelector方法，做以下几步的处理：  
 
-* 动态创建一个桩类
-* 动态为桩类添加对应的Selector，用一个通用的返回0的函数来实现该SEL的IMP
+* 为桩类添加相应的方法，方法的实现是一个具有可变数量参数的C函数
+* 该C函数只是简单的返回0，类似于返回nil   
 * 将消息直接转发到这个桩类对象上。  
-流程图如下：   
-
-![流程图](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/performSelector.png)  
-
 
 KVO：  
 容易出现崩溃的地方：忘记了移除观察者；没有添加就去移除；重复添加后导致添加/移除次数不匹配；
@@ -672,14 +668,6 @@ KVO：
 定时器：  
 由于定时器对target进行了强引用，容易造成循环引用，一是造成内存不释放，二是不释放的对象在定时器被触发时执行代码，很有可能导致崩溃。  
 使用weak proxy解决。  
-
-容器类：  
-采用分类吧，这样可以不用hook系统的方法。 
-数组:  
-字典：  
-NSCache:  
-
-NSString: 哪些情况容易崩？  
 
 其实我们自己的safe cast宏也是可以防止一些崩溃的。  
 
