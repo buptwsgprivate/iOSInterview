@@ -743,7 +743,9 @@ URL域名解析成ip地址的过程被称作 DNS 解析。在这个过程中，�
 
 [iOS 组件化方案探索](https://wereadteam.github.io/2016/03/19/iOS-Component/)  
 [CTMediator](https://github.com/casatwy/CTMediator)  
+[在现有工程中实施基于CTMediator的组件化方案](https://casatwy.com/modulization_in_action.html)  
 
+然后，[iOS组件化方案调研](http://www.jianshu.com/p/34f23b694412)里有收集很多参考资料，有空时要系统的阅读。  
 
 ### SDWebImage源码阅读笔记
 
