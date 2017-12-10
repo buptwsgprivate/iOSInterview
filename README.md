@@ -726,9 +726,35 @@ URL域名解析成ip地址的过程被称作 DNS 解析。在这个过程中，�
   一般情况下，考虑DNS劫持大多发生在使用webview的时候。相较于使用网页，正常的网络请求，即便被劫持了无非是返回错误的数据，或者干脆404。   
   可以基于NSURLProtocol实现LocalDNS防劫持方案。 简单来说，在网页发起请求的时候获取请求域名，然后在本地进行解析得到ip，返回一个直接访问网页ip地址的请求。[DNS防劫持](http://sindrilin.com/apm/2017/03/31/DNS劫持/)这篇文章里有示例代码。     
 
+### 如何创建CocoaPods私有仓库？
+可以看下面两篇文章：  
+[如何创建私有 CocoaPods 仓库](http://www.jianshu.com/p/ddc2490bff9f)  
+[CocoaPods创建私有Pods](http://www.liuchungui.com/blog/2015/10/19/cocoapodschuang-jian-si-you-pods/)  
+
+创建步骤总结：  
+1. 创建一个spec仓库，用来存放私有仓库的spec文件  
+2. 将这个私有的spec仓库，添加到CocoaPods
+   ```pod repo add REPO_NAME SOURCE_URL```   
+3. 生成代码库的spec文件，打tag，并push到私有spec仓库
+   ```pod repo push REPO_NAME SPEC_NAME.podspec```   
+4. 使用的时候，要在Podfile文件中同时添加本地私有源和官方源。如果没有添加本地私有源，它默认是用官方的repo，这样找不到本地的Pod；如果只是设置了本地私有源，就不会再去官方源中查找。
+   
 ### 什么是组件化？如何实施呢？
 
 [iOS 组件化方案探索](https://wereadteam.github.io/2016/03/19/iOS-Component/)  
+[CTMediator](https://github.com/casatwy/CTMediator)  
+
+
+### SDWebImage源码阅读笔记
+
+### AFNetworking源码阅读笔记
+  
+### 性能优化的一些通用思路
+个人总结的一些通用的优化思路：
+合并： 将多个操作进行合并，例如draw call, network request
+压缩： 例如纹理的压缩，网络请求响应里使用压缩格式
+延迟： 延迟创建，按需创建。
+对象池：反复使用，不要反复的创建和销毁。
   
 ### 网络优化方案都有哪些？
 
