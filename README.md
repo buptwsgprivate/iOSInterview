@@ -763,6 +763,21 @@ URL域名解析成ip地址的过程被称作 DNS 解析。在这个过程中，�
 
 5) 组件的负责团队一般就只工作在组件工程里，里面除了组件自身，还有单元测试代码，一般保证自己工作正常就可以了。需要联调时，可以在Podfile里引入依赖的组件。
 
+### 基于CTMediator的组件化方案，有哪些核心组成？
+假如主APP调用某业务A，那么需要以下组成部分：  
+
+* CTMediator类，该类提供了函数 ```- (id)performTarget:(NSString *)targetName action:(NSString *)actionName params:(NSDictionary *)params shouldCacheTarget:(BOOL)shouldCacheTarget;```  
+这个函数可以根据targetName生成对象，根据actionName构造selector，然后可以利用performSelector:withObject:方法，在目标上执行动作。  
+
+* 业务A的实现代码，另外要加一个专门的类，用于执行Target Action  
+  类的名字的格式：`Target_%@`，这里就是Target_A。  
+  这个类里面的方法，名字都以`Action_`开头，需要传参数时，都统一以NSDictionary*的形式传入。  
+  CTMediator类会创建Target类的对象，并在对象上执行方法。  
+
+* 业务A的CTMediator扩展  
+  扩展里声明了所有A业务的对外接口，参数明确，这样外部调用者可以很容易理解如何调用接口。  
+  在扩展的实现里，对Target, Action需要通过硬编码进行指定。由于扩展的负责方和业务的负责方是相同的，所以这个不是问题。      
+  
 ### iOS11带来了哪些新特性？有哪些你觉得以后可能成为热点？  
 
 ### 什么情况下使用H5做页面比较合适？  
