@@ -10,6 +10,11 @@
 
 目前具备的技能：截止目前，掌握了开发iOS APP所需的从账号申请，开发，内测到上线的各个环节，包括三方库管理，持续集成，内存泄露检测，崩溃收集，防崩溃，性能优化，日志收集等。  
 
+### 接下来几年，你的职业规划是什么？
+找一家发展的好的公司  
+大公司可以走技术路线  
+小公司尝试带团队的职位  
+
 ## 问答题
 ### 说说ARC和MRC的区别
 ARC: 自动引用计数， MRC：手动引用计数  
@@ -818,20 +823,85 @@ H5的缺点：
 压缩： 例如纹理的压缩，网络请求响应里使用压缩格式   
 延迟： 延迟创建，按需创建。   
 对象池：反复使用，不要反复的创建和销毁。   
-  
+
+### 离屏渲染的准确解释？  
+图像渲染工作原理
+
+由CPU计算好显示内容，GPU渲染完成后将渲染结果放入帧缓冲区，随后视频控制器会按照 HSync 信号逐行读取帧缓冲区的数据，经过可能的数模转换传递给显示器显示。如下图：  
+![图像渲染工作原理](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/图像渲染工作原理.png)  
+
+屏幕渲染有以下两种方式：  
+On-Screen Rendering  
+当前屏幕渲染，指的是在当前用于显示的屏幕缓冲区中进行渲染操作。  
+
+Off-Screen Rendering
+离屏渲染，指的是GPU或CPU在当前屏幕缓冲区以外新开辟一个缓冲区进行渲染操作。过程中需要切换contexts，先从当前屏幕切换到离屏的contexts，渲染结束后，又要将contexts切换回来，而切换过程十分耗费性能。  
+
+### 降低崩溃率的系统级方案  
+这道题其实我并不知道怎么答，但我觉得可以尝试这样向面试官回答：  
+消除内存泄露  
+消除后台线程更新UI  
+消除循环引用，如NSTimer / CADisplayLink    
+使用安全转换宏  
+在最后，可以使用防崩溃大招: unrecognized selector, KVO  
+
+### 如何实现一个线程安全的NSMutableArray
+
 ### 网络优化方案都有哪些？
 
 ### 电量优化方案都有哪些？
 
-### C++
-### 迭代器在什么情况下会失效？如何应对失效的情况？
+### UITableView有哪些优化的方案？  
+
+### 写一下hitTest函数的实现代码  
+```
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    if (!self.isUserInteractionEnabled || self.isHidden || self.alpha <= 0.01) {
+        return nil;
+    }
+    if ([self pointInside:point withEvent:event]) {
+        for (UIView *subview in [self.subviews reverseObjectEnumerator]) {
+            CGPoint convertedPoint = [subview convertPoint:point fromView:self];
+            UIView *hitTestView = [subview hitTest:convertedPoint withEvent:event];
+            if (hitTestView) {
+                return hitTestView;
+            }
+        }
+        return self;
+    }
+    return nil;
+}
+```
+
+### 常见的加密算法？对称加密和非对称加密的区别。  
+对称加密：  
+这类算法在加密和解决时使用相同的密钥  
+常见的对称加密算法有：DES, 3DES, AES, Blowfish, IDEA, RC5, RC6  
+特点：加密解密效率高，速度快，适合进行大数据量的加解密。  
+
+非对称加密：  
+非对称的加密算法，需要用到两个密钥：公钥和私钥。公钥对外公开，但并不会危害到另外一个的秘密性质。加密用公钥，解密用私钥。  
+常见的非对称加密算法有：RSA, DSA, ECC  
+特点：算法复杂，加解密速度慢，但安全性高，一般与对称加密结合使用（对称加密对内容加密，非对称加密对所使用的密钥加密）。
+
+### C++ STL中的迭代器在什么情况下会失效？如何应对失效的情况？
 
 ## 算法相关
 ### 反转二叉树，非递归
 
 ### M个红球和N个黑球排序，有多少种排法？
 
-### 数据量大时，比如一个游戏的排行榜，如何做排序，选用什么数据结构和排序算法？
+### 给定一棵二叉树和两个节点，求这两个节点的最近的公共父节点。
+
+## 针对项目的问题  
+### 礼物相关
+*  礼物是采用的什么方案？如果是序列帧，那么帧率是多少？每张图片多大？  
+*  一个礼物压缩包是多大？  
+*  如果收到礼物时，资源还没有下载完毕，你们项目中是如何处理的？  
+*  你知道哪些动图格式？  
+
+### 项目中在网络通信环节用了哪些安全技术？  
+https  + AES加密。  
 
 ## 直播技术
 ### 直播涉及的步骤
