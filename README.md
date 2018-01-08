@@ -852,6 +852,8 @@ Off-Screen Rendering
 在事后，通过崩溃收集系统，收集崩溃日志，修复崩溃。
 
 ### 如何实现一个线程安全的NSMutableArray
+可以从NSMutableArray派生，但要根据苹果的文档，实现那些所谓的Primitive Methods。
+在这些方法的内部，加线程同步机制，比如锁。  
 
 ### 网络优化方案都有哪些？
 
