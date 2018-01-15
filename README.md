@@ -385,11 +385,11 @@ NSLog(@"%@", deliveryBlock);
 
 
 ### 阴影的渲染为什么慢？Instruments在View渲染优化中的使用。
-如果只是简单的设置了shadowColor, shadowOffset, shadowOpacity等属性，那么Core Animation就得自己去计算阴影的形状。这会导致在渲染的时候，从GPU切换到CPU去计算阴影的形状，计算完成之后再切换回GPU。这种现象叫离屏渲染，降低性能。
+如果只是简单的设置了shadowColor, shadowOffset, shadowOpacity等属性，那么Core Animation就得自己去计算阴影的形状。这会导致在渲染的时候，发生离屏渲染，降低性能。
 可以利用Simulator或Instruments去测试Core Animation的性能。如：  
 Color Blended Layers  
 Color Copied Images  
-Color Misaligned Images
+Color Misaligned Images  
 Color Off-screen Rendered
 
 ### KVC的原理
@@ -399,9 +399,9 @@ Key-Value Coding:
 实现的原理就是，将key映射到真正的访问方法。  
 例如Setter方法的寻找：  
 
-* 找名字为set<Key>:或_set<Key>的方法，如果找到，调用之。  
+* 找名字为`set<Key>:`或`_set<Key>`的方法，如果找到，调用之。  
 * 如果第1步没有找到，并且类方法accessInstanceVariablesDirectly返回YES(默认)，那么会按`_<Key>, _is<Key>, <Key>, is<Key>`的顺序去寻找实例变量。如果找到了，就将值直接设置到实例变量上。  
-* 如果最后没有找到，会去调用setValue:forUndefinedKey:。默认的实现是抛出异常，但是子类可以提供不同的行为。
+* 如果最后没有找到，会去调用`setValue:forUndefinedKey:`。默认的实现是抛出异常，但是子类可以提供不同的行为。
 
 ### KVO背后的原理
 原理：  
@@ -645,7 +645,7 @@ if (!success) {
 实现思路：NSRunLoop调用方法主要就是在kCFRunLoopBeforeSources和kCFRunLoopBeforeWaiting之间,还有kCFRunLoopAfterWaiting之后,也就是如果我们发现这两个时间内耗时太长,那么就可以判定出此时主线程卡顿. 要监控NSRunLoop的状态，需要添加观察者。  
 当检测到了卡顿，下一步需要做的就是记录卡顿的现场，即此时程序的堆栈调用，可以借助开源库 PLCrashReporter 来实现。   
 
-在xcode里运行APP时，符号信息文件在哪里呢？有了符号文件，再加上崩溃日志，就可以解析出完整的调用栈。    
+在xcode里运行APP时，可以通过运行script，调用xcrun dsymutil工具，产生符号信息文件。有了符号文件，再加上崩溃日志，就可以解析出完整的调用栈。    
 （2）FPS监控。要保持流畅的UI交互，APP刷新率应当努力保持在60FPS。监控实现原理比较简单，通过记录两次刷新时间间隔，就可以计算出当前的FPS。  
 微信读书团队在实际应用过程中，发现上面两种方案，抖动都比较大。因此提出了一套综合的判断方法，结合了主线程监控，FPS监控，以及CPU使用率等指标，作为判断卡顿的标准。  
 
@@ -893,9 +893,11 @@ Off-Screen Rendering
 特点：算法复杂，加解密速度慢，但安全性高，一般与对称加密结合使用（对称加密对内容加密，非对称加密对所使用的密钥加密）。
 
 ### C++ STL中的迭代器在什么情况下会失效？如何应对失效的情况？
+最常见的，在erase(iter)的时候，iter会失效。但是好在这种情况下，erase函数会返回一个新的迭代器。  
 
 ## 算法相关
 ### 反转二叉树，非递归
+已经实现了，按层次遍历二叉树，对于每个结点，交换其左右子树。
 
 ### M个红球和N个黑球排序，有多少种排法？
 
