@@ -860,7 +860,10 @@ Off-Screen Rendering
 ### 电量优化方案都有哪些？
 官方文档在这里：[Energy Efficiency Guide for iOS Apps](https://developer.apple.com/library/content/documentation/Performance/Conceptual/EnergyGuide-iOS/index.html#//apple_ref/doc/uid/TP40015243)  
 一些要点：  
-#### 定位  
+##### 指导原则
+让CPU不间歇的做一些零碎的工作，不如集中的做完，这样CPU可以得到休息的机会。这里涉及到dynamic cost和fixed cost的概念，集中的做完的情况下，因为持续时间短，fixed cost会比较低。
+
+##### 定位  
 * 在需要定位时调用一次CLLocationManager类的requestLocation方法，这个方法在获取到定位信息后就会关闭定位服务。  
 * 不使用时要及时的关闭定位服务。  
 * 使用尽可能低的定位精度，只要能满足需要即可。  
@@ -869,7 +872,7 @@ Off-Screen Rendering
 * 将定位更新限制在特定的区域或位置。  
 * 以上都不适合时，考虑注册Significant-Change Location Updates.  
 
-#### 传感器
+##### 传感器
 * 停止设备方向变化的通知  
   如果当前APP或是界面只会停留在一个方向，可以临时关闭硬件。  
   
@@ -883,14 +886,12 @@ Off-Screen Rendering
   
 * 通过设置更新间隔，降低更新的次数  
 
-#### 蓝牙设备
+##### 蓝牙设备
 使用时要注意优化。
 
-#### 高效的使用网络
-#### 尽量减少定时器的使用
-#### 尽量减少I/O调用
-  
-   
+##### 高效的使用网络
+##### 尽量减少定时器的使用
+##### 尽量减少I/O调用
 
 ### UITableView有哪些优化的方案？  
 
@@ -954,6 +955,42 @@ Off-Screen Rendering
 
 ### 项目中在网络通信环节用了哪些安全技术？  
 https  + AES加密。  
+虽然SSL通信被认为是相当安全了，但是中间人攻击(man-in-the-middle attack)还是会带来威胁。为了万无一失，就需要用到SSL Pinning技术。使用这个技术，可以保证一个APP是在和期望的服务器在进行通信。在实现的时候，要求将服务器的SSL证书，打包进APP的bundle中。  
+
+下面给出使用原生的NSURLSession进行网络通信时的方案。著名的网络库AFNetworking也支持SSL Pinning，使用起来更是简单。了解详情可以看下[这篇文章](https://infinum.co/the-capsized-eight/how-to-make-your-ios-apps-more-secure-with-ssl-pinning)  
+##### NSURLSession  
+
+```
+-(void)URLSession:(NSURLSession *)session didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition, NSURLCredential * _Nullable))completionHandler {
+
+    // Get remote certificate
+    SecTrustRef serverTrust = challenge.protectionSpace.serverTrust;
+    SecCertificateRef certificate = SecTrustGetCertificateAtIndex(serverTrust, 0);
+
+    // Set SSL policies for domain name check
+    NSMutableArray *policies = [NSMutableArray array];
+    [policies addObject:(__bridge_transfer id)SecPolicyCreateSSL(true, (__bridge CFStringRef)challenge.protectionSpace.host)];
+    SecTrustSetPolicies(serverTrust, (__bridge CFArrayRef)policies);
+
+    // Evaluate server certificate
+    SecTrustResultType result;
+    SecTrustEvaluate(serverTrust, &result);
+    BOOL certificateIsValid = (result == kSecTrustResultUnspecified || result == kSecTrustResultProceed);
+
+    // Get local and remote cert data
+    NSData *remoteCertificateData = CFBridgingRelease(SecCertificateCopyData(certificate));
+    NSString *pathToCert = [[NSBundle mainBundle]pathForResource:@"github.com" ofType:@"cer"];
+    NSData *localCertificate = [NSData dataWithContentsOfFile:pathToCert];
+
+    // The pinnning check
+    if ([remoteCertificateData isEqualToData:localCertificate] && certificateIsValid) {
+        NSURLCredential *credential = [NSURLCredential credentialForTrust:serverTrust];
+        completionHandler(NSURLSessionAuthChallengeUseCredential, credential);
+    } else {
+        completionHandler(NSURLSessionAuthChallengeCancelAuthenticationChallenge, NULL);
+    }
+}
+```
 
 ## 直播技术
 ### 直播涉及的步骤
@@ -993,7 +1030,7 @@ Real-time Transport Protocol，用于Internet上针对多媒体数据流的一�
 ### 如何观看直播的视频
 观看直播视频有以下方式：HLS, RTMP, HTTP-FLV，RTP。  
 好看的指标参数：  
-码率：  
+码率：每秒传送的比特数，单位为bps。码率越高，视频越清晰。  
 帧率：即fps，每秒钟多少帧。  
 分辨率：影响图像大小，与图像大小成正比。
 
