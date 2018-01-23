@@ -886,6 +886,11 @@ Off-Screen Rendering
   
   最小精度： 小于0.5毫秒。  
   
+###  关于`dispatch_barrier_async`函数需要搞清楚的一点
+>The queue you specify should be a concurrent queue that you create yourself using the dispatch_queue_create function. If the queue you pass to this function is a serial queue or one of the global concurrent queues, this function behaves like the dispatch_async function.   
+
+根据苹果的官方文档，barrier功能只能用在自定义的并发队列中，不能用在默认提供的并发队列中。  
+
 ### 网络优化方案都有哪些？
 
 ### 电量优化方案都有哪些？
