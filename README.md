@@ -901,6 +901,35 @@ Off-Screen Rendering
 }
 ```
 
+### Core Data大量数据多线程同步
+1. 搭建多线程环境  
+   另外创建NSManagedObjectContext时，指定并发模式为NSPrivateQueueConcurrencyType，这样context会创建并管理一个private queue.  
+   应用启动时创建的context，使用的是NSMainQueueConcurrencyType，被关联到了主线程。  
+2. 在private queue context中进行操作时，应该使用performBlock:或是performBlockAndWait:方法，这两个方法能够保证操作会在正确的queue中执行。  
+
+3. 多个context同步最简单的方案如下：  
+
+```
+NSNotificationCenter.defaultCenter().addObserver(self, 
+                                             selector: "backgroundContextDidSave:", 
+                                                 name: NSManagedObjectContextDidSaveNotification, 
+                                               object: backgroundContext)
+ 
+func backgroundContextDidSave(notification: NSNotification){
+    mainContext.performBlock(){
+        mainContext.mergeChangesFromContextDidSaveNotification(notification)
+    }
+}
+```
+这里要注意的是，注册通知时一定要设置object参数，不要传nil。原因是一些系统框架内部也会使用Core Data，如果不指定产生通知的对象，那么有可能会收到意料之外的通知。  
+
+4. 大量数据的处理  
+  大量数据意味着需要我们关注内存占用和性能，写代码时需要刻如下规则：  
+  1）尽可能缓存需要的数据，不相关的数据保持faults状态。  
+  2）fetch时尽可能精准，少引入不相关的数据。  
+  3）构建多context时尽量将同类managed object集中，最大限度减少合并需求。  
+  4）提升操作效率，对Asynchronous Fetch, Batch Update, Batch Delete等新特性尽可能利用。
+
 ### 常见的加密算法？对称加密和非对称加密的区别。  
 对称加密：  
 这类算法在加密和解决时使用相同的密钥  
@@ -914,6 +943,11 @@ Off-Screen Rendering
 
 ### C++ STL中的迭代器在什么情况下会失效？如何应对失效的情况？
 最常见的，在erase(iter)的时候，iter会失效。但是好在这种情况下，erase函数会返回一个新的迭代器。  
+
+## 设计模式
+### iOS中有哪些设计模式？
+
+### iOS移动APP架构
 
 ## 网络专场
 ### 网络优化方案都有哪些？
@@ -977,6 +1011,9 @@ TCP协议发送的数据，是流式的，没有保护消息边界。所谓的�
 2. 接收方引起的粘包是由于接收方用户进程不及时接收数据，从而导致粘包现象。
 
 其实这个问题也没有啥含量，封包的时候肯定得有定长的头部字段，里面可以读出来消息体的长度。而在客户端，读socket的时候可以指定读取多少字节。那么客户端可以一直重复一个循环：读头部，解析出消息体的长度，然后再读相应长度的字节。  
+
+### IM
+
 
 ## 算法相关
 ### 反转二叉树，非递归
