@@ -843,64 +843,6 @@ Off-Screen Rendering
 
 根据苹果的官方文档，barrier功能只能用在自定义的并发队列中，不能用在默认提供的并发队列中。如果用了，那么barrier功能是不起作用的，退化为普通的dispatch调用。  
 
-### 电量优化方案都有哪些？
-官方文档在这里：[Energy Efficiency Guide for iOS Apps](https://developer.apple.com/library/content/documentation/Performance/Conceptual/EnergyGuide-iOS/index.html#//apple_ref/doc/uid/TP40015243)  
-一些要点：  
-##### 指导原则
-让CPU不间歇的做一些零碎的工作，不如集中的做完，这样CPU可以得到休息的机会。这里涉及到dynamic cost和fixed cost的概念，集中的做完的情况下，因为持续时间短，fixed cost会比较低。
-
-##### 定位  
-* 在需要定位时调用一次CLLocationManager类的requestLocation方法，这个方法在获取到定位信息后就会关闭定位服务。  
-* 不使用时要及时的关闭定位服务。  
-* 使用尽可能低的定位精度，只要能满足需要即可。  
-* 设置location manager的pausesLocationUpdatesAutomatically和activityType两个属性，可以让location manager做适当的优化。  
-* 在后台运行时，允许延期的位置更新。  
-* 将定位更新限制在特定的区域或位置。  
-* 以上都不适合时，考虑注册Significant-Change Location Updates.  
-
-##### 传感器
-* 停止设备方向变化的通知  
-  如果当前APP或是界面只会停留在一个方向，可以临时关闭硬件。  
-  
-  ```
-  // Turn on the accelerometer
-  [[UIDevice currentDevice] beginGeneratingDeviceOrientationNotifications];
-  
-   // Turn off the accelerometer
-  [[UIDevice currentDevice] endGeneratingDeviceOrientationNotifications];
-  ```   
-  
-* 通过设置更新间隔，降低更新的次数  
-
-##### 蓝牙设备
-使用时要注意优化。
-
-##### 高效的使用网络
-##### 尽量减少定时器的使用
-##### 尽量减少I/O调用
-
-### UITableView有哪些优化的方案？  
-
-### 写一下hitTest函数的实现代码  
-```
-- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
-    if (!self.isUserInteractionEnabled || self.isHidden || self.alpha <= 0.01) {
-        return nil;
-    }
-    if ([self pointInside:point withEvent:event]) {
-        for (UIView *subview in [self.subviews reverseObjectEnumerator]) {
-            CGPoint convertedPoint = [subview convertPoint:point fromView:self];
-            UIView *hitTestView = [subview hitTest:convertedPoint withEvent:event];
-            if (hitTestView) {
-                return hitTestView;
-            }
-        }
-        return self;
-    }
-    return nil;
-}
-```
-
 ### dispatch_sync死锁问题（`dispatch_get_current_queue()`为什么被废弃？） 
 之前都会说下面的代码会死锁：  
 
@@ -972,6 +914,64 @@ void dispatch_set_target_queue(dispatch_object_t object, dispatch_queue_t queue)
            dispatch_sync(queueA, block);  
        }  
    });  
+```
+
+### 电量优化方案都有哪些？
+官方文档在这里：[Energy Efficiency Guide for iOS Apps](https://developer.apple.com/library/content/documentation/Performance/Conceptual/EnergyGuide-iOS/index.html#//apple_ref/doc/uid/TP40015243)  
+一些要点：  
+##### 指导原则
+让CPU不间歇的做一些零碎的工作，不如集中的做完，这样CPU可以得到休息的机会。这里涉及到dynamic cost和fixed cost的概念，集中的做完的情况下，因为持续时间短，fixed cost会比较低。
+
+##### 定位  
+* 在需要定位时调用一次CLLocationManager类的requestLocation方法，这个方法在获取到定位信息后就会关闭定位服务。  
+* 不使用时要及时的关闭定位服务。  
+* 使用尽可能低的定位精度，只要能满足需要即可。  
+* 设置location manager的pausesLocationUpdatesAutomatically和activityType两个属性，可以让location manager做适当的优化。  
+* 在后台运行时，允许延期的位置更新。  
+* 将定位更新限制在特定的区域或位置。  
+* 以上都不适合时，考虑注册Significant-Change Location Updates.  
+
+##### 传感器
+* 停止设备方向变化的通知  
+  如果当前APP或是界面只会停留在一个方向，可以临时关闭硬件。  
+  
+  ```
+  // Turn on the accelerometer
+  [[UIDevice currentDevice] beginGeneratingDeviceOrientationNotifications];
+  
+   // Turn off the accelerometer
+  [[UIDevice currentDevice] endGeneratingDeviceOrientationNotifications];
+  ```   
+  
+* 通过设置更新间隔，降低更新的次数  
+
+##### 蓝牙设备
+使用时要注意优化。
+
+##### 高效的使用网络
+##### 尽量减少定时器的使用
+##### 尽量减少I/O调用
+
+### UITableView有哪些优化的方案？  
+
+### 写一下hitTest函数的实现代码  
+```
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    if (!self.isUserInteractionEnabled || self.isHidden || self.alpha <= 0.01) {
+        return nil;
+    }
+    if ([self pointInside:point withEvent:event]) {
+        for (UIView *subview in [self.subviews reverseObjectEnumerator]) {
+            CGPoint convertedPoint = [subview convertPoint:point fromView:self];
+            UIView *hitTestView = [subview hitTest:convertedPoint withEvent:event];
+            if (hitTestView) {
+                return hitTestView;
+            }
+        }
+        return self;
+    }
+    return nil;
+}
 ```
 
 ### Core Data大量数据多线程同步
