@@ -916,6 +916,14 @@ void dispatch_set_target_queue(dispatch_object_t object, dispatch_queue_t queue)
    });  
 ```
 
+### 优先级反转(Priority Inversion)
+优先级反转是指在某种条件下，低优先级的任务阻塞了高优先级任务的执行，从而反转了任务的优先级。由于GCD有不同优先级的后台队列(background queue)，所以最好是了解这种可能性。   
+当一个高优先级的任务和一个低优先级的任务访问一个共享资源时，优先级反转的问题就有可能发生。当低优先级的任务对共享资源加锁后，它应该非常快的执行完，然后释放出锁，让高优先级的任务执行。然而，在高优先级的任务被阻塞期间，有可能中优先级的任务得到执行的机会，从而抢占了低优先级任务的执行机会。这样的话，中优先级的任务就抢在了高优先级任务前面，得到了执行的机会。   
+下面的图描述了这种可能性：    
+![优先级反转](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/priority-inversion%402x-72e6760c.png)
+
+为了避免这个问题的出现，在使用GCD时，总是使用默认优先级的队列，即使不同的优先级看起来很好。  
+
 ### 电量优化方案都有哪些？
 官方文档在这里：[Energy Efficiency Guide for iOS Apps](https://developer.apple.com/library/content/documentation/Performance/Conceptual/EnergyGuide-iOS/index.html#//apple_ref/doc/uid/TP40015243)  
 一些要点：  
