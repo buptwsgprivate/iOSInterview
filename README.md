@@ -901,6 +901,79 @@ Off-Screen Rendering
 }
 ```
 
+### dispatch_sync死锁问题（`dispatch_get_current_queue()`为什么被废弃？） 
+之前都会说下面的代码会死锁：  
+
+```
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        NSLog(@"I will dead lock");
+    });
+```
+其实现在在最新的Xcode9下，下面的代码直接就崩溃了，应该是系统改进了，便于发现问题。  
+
+关于`dispatch_get_current_queue`被废弃的问题，是因为之前写下面的代码会导致死锁：  
+
+```
+void func(dispatch_queue_t queue, dispatch_block_t block)  
+{  
+    if (dispatch_get_current_queue() == queue) {  
+        block();  
+    }else{  
+        dispatch_sync(queue, block);  
+    }  
+}  
+
+- (void)deadLockFunc  
+{  
+    dispatch_queue_t queueA = dispatch_queue_create("com.yiyaaixuexi.queueA", NULL);  
+    dispatch_queue_t queueB = dispatch_queue_create("com.yiyaaixuexi.queueB", NULL);  
+    dispatch_sync(queueA, ^{  
+        dispatch_sync(queueB, ^{  
+            dispatch_block_t block = ^{  
+                //do something  
+            };  
+            func(queueA, block);  
+        });  
+    });  
+}  
+```
+
+上面的代码会导致连续两次针对queueA调用dispatch_sync函数，问题在于GCD队列本身是不可重入的。  
+
+那么替代的方案是:  
+
+```
+void dispatch_queue_set_specific(dispatch_queue_t queue, const void *key, void *context, dispatch_function_t destructor);
+void dispatch_set_target_queue(dispatch_object_t object, dispatch_queue_t queue);
+
+例如如下代码：  
+   dispatch_queue_t queueA = dispatch_queue_create("com.yiyaaixuexi.queueA", NULL);  
+   dispatch_queue_t queueB = dispatch_queue_create("com.yiyaaixuexi.queueB", NULL);  
+   //这行代码是必须的
+   dispatch_set_target_queue(queueB, queueA);  
+    
+   static int specificKey;  
+   CFStringRef specificValue = CFSTR("queueA");  
+   dispatch_queue_set_specific(queueA,  
+                               &specificKey,  
+                               (void*)specificValue,  
+                               (dispatch_function_t)CFRelease);  
+    
+   dispatch_sync(queueB, ^{  
+       dispatch_block_t block = ^{  
+               //do something  
+       };  
+       
+       //当前线程为queueB对应的线程里，但是却能够获取到specific值，就是由于前面设置了queueA为queueB的target queue.
+       CFStringRef retrievedValue = dispatch_get_specific(&specificKey);  
+       if (retrievedValue) {  
+           block();  
+       } else {  
+           dispatch_sync(queueA, block);  
+       }  
+   });  
+```
+
 ### Core Data大量数据多线程同步
 1. 搭建多线程环境  
    另外创建NSManagedObjectContext时，指定并发模式为NSPrivateQueueConcurrencyType，这样context会创建并管理一个private queue.  
