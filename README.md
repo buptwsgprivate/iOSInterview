@@ -1,5 +1,15 @@
 # iOS面试题汇总
 
+## 章节
+- [开篇](##开篇)  
+- [iOS基础](##iOS题目)
+- [性能优化](##性能优化相关)
+- [架构设计](##架构)
+- [网络](##网络专场)
+- [算法](##算法相关)
+- [针对项目的问题](##针对项目的问题)
+- [直播技术](##直播技术)
+
 ## 开篇
 ### 做个自我介绍吧。
 教育经历：本科在重庆邮电大学，硕士在北京邮电大学，都是计算机专业。  
@@ -15,7 +25,7 @@
 大公司可以走技术路线  
 小公司尝试带团队的职位  
 
-## 问答题
+## iOS题目
 ### 说说ARC和MRC的区别
 ARC: 自动引用计数， MRC：手动引用计数  
 在MRC时代，开发者通过retain, release, autorelease这些函数，手动的控制引用计数。  
@@ -383,15 +393,6 @@ NSLog(@"%@", deliveryBlock);
 ```
 经打印得知，只有第一次打印输出类型为__NSStackBlock__, 其它的两次都变成了__NSMallocBlock__。所以栈上的Block，在ARC环境下，一经赋值，copy，参数传递，就都变成了堆上的Block。  
 
-
-### 阴影的渲染为什么慢？Instruments在View渲染优化中的使用。
-如果只是简单的设置了shadowColor, shadowOffset, shadowOpacity等属性，那么Core Animation就得自己去计算阴影的形状。这会导致在渲染的时候，发生离屏渲染，降低性能。
-可以利用Simulator或Instruments去测试Core Animation的性能。如：  
-Color Blended Layers  
-Color Copied Images  
-Color Misaligned Images  
-Color Off-screen Rendered
-
 ### KVC的原理
 Key-Value Coding:   
 通过key来访问一个对象的属性或是实例变量的值，而不是通过具体的访问方法。  
@@ -532,9 +533,6 @@ Core Graphics也叫Quartz 2D, 是一个先进的，二维绘图引擎，可以�
 
 个人的理解：UIView会去利用Core Graphics去绘制，绘制好的内容交给Core Animation去做渲染。  
 
-### 说说UIScrollView的原理
-scroll view的大小固定，但它的content view可以是任意的尺寸，contentSize属性表明了内容视图的大小。它上面添加了好几种手势，用来滚动内容视图。
-感觉这个题用来考新手的吧。  
 
 ### UIWebView中注入JS时，获取JSContext的正确方法是什么？
 有一个简单的办法，可以拿到一个webview的JSContext:   
@@ -637,171 +635,12 @@ if (!success) {
 }
 ```
 
-* 如果Core Data不能推断出Mapping model，那么就麻烦了，需要自己去定义。不过这个一般用不到，用到时再去看文档就可以。  
-
-### 用户感觉卡顿后, 如何系统分析卡顿的原因？
-卡顿监控的实现一般有两种方案：  
-（1）主线程卡顿监控。通过子线程监测主线程的runLoop，判断两个状态区域之间的耗时是否达到一定阈值。具体原理和实现，[这篇文章](http://www.tanhao.me/code/151113.html/)介绍得比较详细。  
-实现思路：NSRunLoop调用方法主要就是在kCFRunLoopBeforeSources和kCFRunLoopBeforeWaiting之间,还有kCFRunLoopAfterWaiting之后,也就是如果我们发现这两个时间内耗时太长,那么就可以判定出此时主线程卡顿. 要监控NSRunLoop的状态，需要添加观察者。  
-当检测到了卡顿，下一步需要做的就是记录卡顿的现场，即此时程序的堆栈调用，可以借助开源库 PLCrashReporter 来实现。   
-
-在xcode里运行APP时，可以通过运行script，调用xcrun dsymutil工具，产生符号信息文件。有了符号文件，再加上崩溃日志，就可以解析出完整的调用栈。    
-（2）FPS监控。要保持流畅的UI交互，APP刷新率应当努力保持在60FPS。监控实现原理比较简单，通过记录两次刷新时间间隔，就可以计算出当前的FPS。  
-微信读书团队在实际应用过程中，发现上面两种方案，抖动都比较大。因此提出了一套综合的判断方法，结合了主线程监控，FPS监控，以及CPU使用率等指标，作为判断卡顿的标准。  
-
-![卡顿分析](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/wechat-stuck.jpeg)  
-
-[iOS实时卡顿监控](http://www.tanhao.me/code/151113.html/)  
-[微信iOS卡顿监控系统](https://mp.weixin.qq.com/s?__biz=MzAwNDY1ODY2OQ==&mid=207890859&idx=1&sn=e98dd604cdb854e7a5808d2072c29162&scene=4#wechat_redirect)  
-[调研和整理](https://github.com/aozhimin/iOS-Monitor-Platform)   
-[简单监测iOS卡顿的demo](http://blog.csdn.net/game3108/article/details/51147946)  
-
-如果想在线上产品中加入监控系统，有些问题是需要考虑的：  
-对客户手机的性能影响(运行速度，流量)，流量影响，磁盘占用影响。  
-对服务器的压力  
-
-一般公司可以使用大厂的APM产品，大厂一般自己研发。  
-### 如何检测后台线程中更新UI？
-从Xcode9开始，诊断选项里有个叫"Main Thread checker"的，默认是打开的，在程序运行期间，如果检测到了主线程之外的线程中更新UI，那么会在控制台中打出警告。但问题是，很多开发者选择无视，需要依赖于开发者的自觉，才能避免之类的问题。  
-
-也可以自己去实现一套机制，原理是通过hook UIView的-setNeedsLayout, -setNeedsDisplay, -setNeedsDisplayInRect三个方法，确保它们都是在主线程中执行。如果不是，那么让程序发生崩溃，可以强制开发者去修改。  
-
-### 有没有什么办法能够防止crash?
-可以看看这两篇文章：  
-[网易iOS App运行时Crash自动防护实践](https://mp.weixin.qq.com/s?__biz=MzA3ODg4MDk0Ng==&mid=2651113088&idx=1&sn=10b28d7fbcdf0def1a47113e5505728d&chksm=844c6f5db33be64b57fc9b4013cdbb7122d7791f3bbca9b4b29e80cce295eb341b03a9fc0f2f&mpshare=1&scene=23&srcid=0207njmGS2HWHI0BZmpjNKhv%23rd)  
-[XXShield实现防止iOS APP Crash和捕获异常状态下的崩溃信息](http://java.ctolib.com/ValiantCat-XXShield.html)  
-
-unrecognized selector: 
-可以利用运行时的消息转发机制，重写forwardingTargetForSelector方法，做以下几步的处理：  
-
-* 为桩类添加相应的方法，方法的实现是一个具有可变数量参数的C函数
-* 该C函数只是简单的返回0，类似于返回nil   
-* 将消息直接转发到这个桩类对象上。  
-
-KVO：  
-容易出现崩溃的地方：忘记了移除观察者；没有添加就去移除；重复添加后导致添加/移除次数不匹配；
-
-定时器：  
-由于定时器对target进行了强引用，容易造成循环引用，一是造成内存不释放，二是不释放的对象在定时器被触发时执行代码，很有可能导致崩溃。  
-使用weak proxy解决。  
-
-其实我们自己的safe cast宏也是可以防止一些崩溃的。    
-
-### 多线程下载文件实现方案？要能够支持暂停，重新开始。
+* 如果Core Data不能推断出Mapping model，那么就麻烦了，需要自己去定义。不过这个一般用不到，用到时再去看文档就可以。      
 
 ### GPU和CPU是如何协同工作的？
 关于两者的协同工作，[iOS核心动画高级技巧](https://zsisme.gitbooks.io/ios-/content/index.html)这本书里有讲，在第12章的第1节。里面讲述了渲染所涉及的6个阶段，只有最后一个阶段是由GPU执行的，并且只有前两个阶段是开发者可控的。但是就是在这前两个阶段，我们可以决定哪些由CPU执行，哪些交给GPU去执行。 
 
-这本书其实可以系统的一读，并加深学习。  
-
-### 如何创建CocoaPods私有仓库？
-可以看下面两篇文章：  
-[如何创建私有 CocoaPods 仓库](http://www.jianshu.com/p/ddc2490bff9f)  
-[CocoaPods创建私有Pods](http://www.liuchungui.com/blog/2015/10/19/cocoapodschuang-jian-si-you-pods/)  
-
-创建步骤总结：  
-1. 创建一个spec仓库，用来存放私有仓库的spec文件  
-2. 将这个私有的spec仓库，添加到CocoaPods
-   ```pod repo add REPO_NAME SOURCE_URL```   
-3. 生成代码库的spec文件，打tag，并push到私有spec仓库
-   ```pod repo push REPO_NAME SPEC_NAME.podspec```   
-4. 使用的时候，要在Podfile文件中同时添加本地私有源和官方源。如果没有添加本地私有源，它默认是用官方的repo，这样找不到本地的Pod；如果只是设置了本地私有源，就不会再去官方源中查找。
-   
-### 什么是组件化？如何实施呢？
-
-[iOS 组件化方案探索](https://wereadteam.github.io/2016/03/19/iOS-Component/)  
-[CTMediator](https://github.com/casatwy/CTMediator)  
-[在现有工程中实施基于CTMediator的组件化方案](https://casatwy.com/modulization_in_action.html)  
-
-然后，[iOS组件化方案调研](http://www.jianshu.com/p/34f23b694412)里有收集很多参考资料，有空时要系统的阅读。  
-
-读了[在现有工程中实施基于CTMediator的组件化方案](https://casatwy.com/modulization_in_action.html)一文后，有下述问题：  
-1) 可否将A_Category和B_Category合并为一个Pod?  
-答：不能，除非这两个pod彼此不能拆解。但是如果彼此不能拆解的话，就不应该出现两个category，应该只有一个才合理。  
-2）B_Category提供的服务和Target_B提供的服务是一样的，能不能把B_Category直接放到B的模块里替代Target_B？   
-答：不要这么做。category是业务无关的，target是业务相关的。外部只会通过category来调用功能，这样能够达到两个效果：1.某组件即使缺少依赖，也能编译通过。2.在Podfile中添加被依赖的组件后，不用修改任何代码，就能够正常调用被依赖的组件的功能。  
-这样才能做到完全解耦。  
-3) 组件划分的标准是什么？  
-答：考虑两点，1.这一部分是否能够自治，且相对独立。2.这一部分是否会被多个调用者调度。只要这二者有一个条件满足，那就会把这部分组件化出来，即使它只有一个对象不到50行代码。  
-
-组件化更多的是针对横向依赖做依赖下沉。业务相对于服务之间的依赖属于纵向依赖，把服务作为普通Pod引入即可。业务和业务之间是横向依赖，必须组件化。  
-
-4) 工程中的公用图片资源在组件化时应该怎么处理呢？
-答：我们是单独一个子工程，里面只有图片。然后在其它使用图片的子工程里，只把这个图片子工程写入Podfile，而不写入podspec的dependency里面，这样能确保调试的时候有图片，组件发版的时候不带图片。然后在主工程的Podfile里面同样也写入图片子工程，这样就好了。
-
-5) 组件的负责团队一般就只工作在组件工程里，里面除了组件自身，还有单元测试代码，一般保证自己工作正常就可以了。需要联调时，可以在Podfile里引入依赖的组件。
-
-### 基于CTMediator的组件化方案，有哪些核心组成？
-假如主APP调用某业务A，那么需要以下组成部分：  
-
-* CTMediator类，该类提供了函数 ```- (id)performTarget:(NSString *)targetName action:(NSString *)actionName params:(NSDictionary *)params shouldCacheTarget:(BOOL)shouldCacheTarget;```  
-这个函数可以根据targetName生成对象，根据actionName构造selector，然后可以利用performSelector:withObject:方法，在目标上执行动作。  
-
-* 业务A的实现代码，另外要加一个专门的类，用于执行Target Action  
-  类的名字的格式：`Target_%@`，这里就是Target_A。  
-  这个类里面的方法，名字都以`Action_`开头，需要传参数时，都统一以NSDictionary*的形式传入。  
-  CTMediator类会创建Target类的对象，并在对象上执行方法。  
-
-* 业务A的CTMediator扩展  
-  扩展里声明了所有A业务的对外接口，参数明确，这样外部调用者可以很容易理解如何调用接口。  
-  在扩展的实现里，对Target, Action需要通过硬编码进行指定。由于扩展的负责方和业务的负责方是相同的，所以这个不是问题。      
-  
-### iOS11带来了哪些新特性？有哪些你觉得以后可能成为热点？  
-
-### 什么情况下使用H5做页面比较合适？  
-Native的缺点：  
-App的发版周期偏长，有时无法跟上产品的更新节奏  
-灵活性差，如果有圈套的方案变更，需要发版才能解决  
-如果存在bug，无法在当前版本进行修复  
-需要根据不同的平台写不同的代码  
-
-H5的优点：  
-页面可以实时在服务端进行修改，灵活性很强，避免了Native发版周期带来的时间成本  
-
-H5的缺点：  
-弱网情况下体验较差  
-流量消耗较大  
-访问原生系统的能力受到限制  
-
-通常的经验是：对于一些比较稳定的业务，对用户体验要求较高的，可以选择Native开发。而对于一些业务变更比较快，处在不断试水的过程，而且不涉及调用文件系统和硬件调用的业务我们可以选择H5开发。    
-
-### SDWebImage源码阅读笔记
-
-### AFNetworking源码阅读笔记
-  
-### 性能优化的一些通用思路
-个人总结的一些通用的优化思路：   
-合并： 将多个操作进行合并，例如draw call, network request   
-压缩： 例如纹理的压缩，网络请求响应里使用压缩格式   
-延迟： 延迟创建，按需创建。   
-对象池：反复使用，不要反复的创建和销毁。   
-
-### 离屏渲染的准确解释？  
-图像渲染工作原理
-
-由CPU计算好显示内容，GPU渲染完成后将渲染结果放入帧缓冲区，随后视频控制器会按照 HSync 信号逐行读取帧缓冲区的数据，经过可能的数模转换传递给显示器显示。如下图：  
-![图像渲染工作原理](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/图像渲染工作原理.png)  
-
-屏幕渲染有以下两种方式：  
-On-Screen Rendering  
-当前屏幕渲染，指的是在当前用于显示的屏幕缓冲区中进行渲染操作。  
-
-Off-Screen Rendering
-离屏渲染，指的是GPU或CPU在当前屏幕缓冲区以外新开辟一个缓冲区进行渲染操作。过程中需要切换contexts，先从当前屏幕切换到离屏的contexts，渲染结束后，又要将contexts切换回来，而切换过程十分耗费性能。  
-
-### 降低崩溃率的系统级方案  
-不知道业界有没有这样的系统级方案存在，但我觉得可以尝试这样向面试官回答：  
-消除内存泄露  
-消除后台线程更新UI      
-使用安全转换宏  
-判断一个对象的类是不是期望的类型   
-使用断言，在开发期间尽量多的暴露出问题  
-通过Xcode的静态分析工具，查找出代码中的隐患  
-通过XCode的诊断工具，检测出不容易暴露的问题  
-最佳实践：在析构或其它合适的时机，将delegate或datasource置为nil，会比较安全   
-在最后，可以使用防崩溃大招: unrecognized selector, KVO  
-
-在事后，通过崩溃收集系统，收集崩溃日志，修复崩溃。
+这本书其实可以系统的一读，并加深学习。    
 
 ### 如何实现一个线程安全的NSMutableArray
 可以从NSMutableArray派生，但要根据苹果的文档，实现那些所谓的Primitive Methods。
@@ -922,45 +761,7 @@ void dispatch_set_target_queue(dispatch_object_t object, dispatch_queue_t queue)
 下面的图描述了这种可能性：    
 ![优先级反转](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/priority-inversion%402x-72e6760c.png)
 
-为了避免这个问题的出现，在使用GCD时，总是使用默认优先级的队列，即使不同的优先级看起来很好。  
-
-### 电量优化方案都有哪些？
-官方文档在这里：[Energy Efficiency Guide for iOS Apps](https://developer.apple.com/library/content/documentation/Performance/Conceptual/EnergyGuide-iOS/index.html#//apple_ref/doc/uid/TP40015243)  
-一些要点：  
-##### 指导原则
-让CPU不间歇的做一些零碎的工作，不如集中的做完，这样CPU可以得到休息的机会。这里涉及到dynamic cost和fixed cost的概念，集中的做完的情况下，因为持续时间短，fixed cost会比较低。
-
-##### 定位  
-* 在需要定位时调用一次CLLocationManager类的requestLocation方法，这个方法在获取到定位信息后就会关闭定位服务。  
-* 不使用时要及时的关闭定位服务。  
-* 使用尽可能低的定位精度，只要能满足需要即可。  
-* 设置location manager的pausesLocationUpdatesAutomatically和activityType两个属性，可以让location manager做适当的优化。  
-* 在后台运行时，允许延期的位置更新。  
-* 将定位更新限制在特定的区域或位置。  
-* 以上都不适合时，考虑注册Significant-Change Location Updates.  
-
-##### 传感器
-* 停止设备方向变化的通知  
-  如果当前APP或是界面只会停留在一个方向，可以临时关闭硬件。  
-  
-  ```
-  // Turn on the accelerometer
-  [[UIDevice currentDevice] beginGeneratingDeviceOrientationNotifications];
-  
-   // Turn off the accelerometer
-  [[UIDevice currentDevice] endGeneratingDeviceOrientationNotifications];
-  ```   
-  
-* 通过设置更新间隔，降低更新的次数  
-
-##### 蓝牙设备
-使用时要注意优化。
-
-##### 高效的使用网络
-##### 尽量减少定时器的使用
-##### 尽量减少I/O调用
-
-### UITableView有哪些优化的方案？  
+为了避免这个问题的出现，在使用GCD时，总是使用默认优先级的队列，即使不同的优先级看起来很好。    
 
 ### 写一下hitTest函数的实现代码  
 ```
@@ -1025,7 +826,208 @@ func backgroundContextDidSave(notification: NSNotification){
 ### C++ STL中的迭代器在什么情况下会失效？如何应对失效的情况？
 最常见的，在erase(iter)的时候，iter会失效。但是好在这种情况下，erase函数会返回一个新的迭代器。  
 
-## 设计模式
+## 性能优化相关
+### 性能优化的一些通用思路
+个人总结的一些通用的优化思路：   
+合并： 将多个操作进行合并，例如draw call, network request   
+压缩： 例如纹理的压缩，网络请求响应里使用压缩格式   
+延迟： 延迟创建，按需创建。   
+对象池：反复使用，不要反复的创建和销毁。 
+
+### 阴影的渲染为什么慢？Instruments在View渲染优化中的使用。
+如果只是简单的设置了shadowColor, shadowOffset, shadowOpacity等属性，那么Core Animation就得自己去计算阴影的形状。这会导致在渲染的时候，发生离屏渲染，降低性能。
+可以利用Simulator或Instruments去测试Core Animation的性能。如：  
+Color Blended Layers  
+Color Copied Images  
+Color Misaligned Images  
+Color Off-screen Rendered
+
+### 用户感觉卡顿后, 如何系统分析卡顿的原因？
+卡顿监控的实现一般有两种方案：  
+（1）主线程卡顿监控。通过子线程监测主线程的runLoop，判断两个状态区域之间的耗时是否达到一定阈值。具体原理和实现，[这篇文章](http://www.tanhao.me/code/151113.html/)介绍得比较详细。  
+实现思路：NSRunLoop调用方法主要就是在kCFRunLoopBeforeSources和kCFRunLoopBeforeWaiting之间,还有kCFRunLoopAfterWaiting之后,也就是如果我们发现这两个时间内耗时太长,那么就可以判定出此时主线程卡顿. 要监控NSRunLoop的状态，需要添加观察者。  
+当检测到了卡顿，下一步需要做的就是记录卡顿的现场，即此时程序的堆栈调用，可以借助开源库 PLCrashReporter 来实现。   
+
+在xcode里运行APP时，可以通过运行script，调用xcrun dsymutil工具，产生符号信息文件。有了符号文件，再加上崩溃日志，就可以解析出完整的调用栈。    
+（2）FPS监控。要保持流畅的UI交互，APP刷新率应当努力保持在60FPS。监控实现原理比较简单，通过记录两次刷新时间间隔，就可以计算出当前的FPS。  
+微信读书团队在实际应用过程中，发现上面两种方案，抖动都比较大。因此提出了一套综合的判断方法，结合了主线程监控，FPS监控，以及CPU使用率等指标，作为判断卡顿的标准。  
+
+![卡顿分析](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/wechat-stuck.jpeg)  
+
+[iOS实时卡顿监控](http://www.tanhao.me/code/151113.html/)  
+[微信iOS卡顿监控系统](https://mp.weixin.qq.com/s?__biz=MzAwNDY1ODY2OQ==&mid=207890859&idx=1&sn=e98dd604cdb854e7a5808d2072c29162&scene=4#wechat_redirect)  
+[调研和整理](https://github.com/aozhimin/iOS-Monitor-Platform)   
+[简单监测iOS卡顿的demo](http://blog.csdn.net/game3108/article/details/51147946)  
+
+如果想在线上产品中加入监控系统，有些问题是需要考虑的：  
+对客户手机的性能影响(运行速度，流量)，流量影响，磁盘占用影响。  
+对服务器的压力  
+
+一般公司可以使用大厂的APM产品，大厂一般自己研发。  
+
+### 如何检测后台线程中更新UI？
+从Xcode9开始，诊断选项里有个叫"Main Thread checker"的，默认是打开的，在程序运行期间，如果检测到了主线程之外的线程中更新UI，那么会在控制台中打出警告。但问题是，很多开发者选择无视，需要依赖于开发者的自觉，才能避免之类的问题。  
+
+也可以自己去实现一套机制，原理是通过hook UIView的-setNeedsLayout, -setNeedsDisplay, -setNeedsDisplayInRect三个方法，确保它们都是在主线程中执行。如果不是，那么让程序发生崩溃，可以强制开发者去修改。  
+
+### 有没有什么办法能够防止crash?
+可以看看这两篇文章：  
+[网易iOS App运行时Crash自动防护实践](https://mp.weixin.qq.com/s?__biz=MzA3ODg4MDk0Ng==&mid=2651113088&idx=1&sn=10b28d7fbcdf0def1a47113e5505728d&chksm=844c6f5db33be64b57fc9b4013cdbb7122d7791f3bbca9b4b29e80cce295eb341b03a9fc0f2f&mpshare=1&scene=23&srcid=0207njmGS2HWHI0BZmpjNKhv%23rd)  
+[XXShield实现防止iOS APP Crash和捕获异常状态下的崩溃信息](http://java.ctolib.com/ValiantCat-XXShield.html)  
+
+unrecognized selector: 
+可以利用运行时的消息转发机制，重写forwardingTargetForSelector方法，做以下几步的处理：  
+
+* 为桩类添加相应的方法，方法的实现是一个具有可变数量参数的C函数
+* 该C函数只是简单的返回0，类似于返回nil   
+* 将消息直接转发到这个桩类对象上。  
+
+KVO：  
+容易出现崩溃的地方：忘记了移除观察者；没有添加就去移除；重复添加后导致添加/移除次数不匹配；
+
+定时器：  
+由于定时器对target进行了强引用，容易造成循环引用，一是造成内存不释放，二是不释放的对象在定时器被触发时执行代码，很有可能导致崩溃。  
+使用weak proxy解决。  
+
+其实我们自己的safe cast宏也是可以防止一些崩溃的。  
+
+### 离屏渲染的准确解释？  
+图像渲染工作原理
+
+由CPU计算好显示内容，GPU渲染完成后将渲染结果放入帧缓冲区，随后视频控制器会按照 HSync 信号逐行读取帧缓冲区的数据，经过可能的数模转换传递给显示器显示。如下图：  
+![图像渲染工作原理](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/图像渲染工作原理.png)  
+
+屏幕渲染有以下两种方式：  
+On-Screen Rendering  
+当前屏幕渲染，指的是在当前用于显示的屏幕缓冲区中进行渲染操作。  
+
+Off-Screen Rendering
+离屏渲染，指的是GPU或CPU在当前屏幕缓冲区以外新开辟一个缓冲区进行渲染操作。过程中需要切换contexts，先从当前屏幕切换到离屏的contexts，渲染结束后，又要将contexts切换回来，而切换过程十分耗费性能。  
+
+### 降低崩溃率的系统级方案  
+不知道业界有没有这样的系统级方案存在，但我觉得可以尝试这样向面试官回答：  
+消除内存泄露  
+消除后台线程更新UI      
+使用安全转换宏  
+判断一个对象的类是不是期望的类型   
+使用断言，在开发期间尽量多的暴露出问题  
+通过Xcode的静态分析工具，查找出代码中的隐患  
+通过XCode的诊断工具，检测出不容易暴露的问题  
+最佳实践：在析构或其它合适的时机，将delegate或datasource置为nil，会比较安全   
+在最后，可以使用防崩溃大招: unrecognized selector, KVO  
+
+在事后，通过崩溃收集系统，收集崩溃日志，修复崩溃。
+
+### 电量优化方案都有哪些？
+官方文档在这里：[Energy Efficiency Guide for iOS Apps](https://developer.apple.com/library/content/documentation/Performance/Conceptual/EnergyGuide-iOS/index.html#//apple_ref/doc/uid/TP40015243)  
+一些要点：  
+##### 指导原则
+让CPU不间歇的做一些零碎的工作，不如集中的做完，这样CPU可以得到休息的机会。这里涉及到dynamic cost和fixed cost的概念，集中的做完的情况下，因为持续时间短，fixed cost会比较低。
+
+##### 定位  
+* 在需要定位时调用一次CLLocationManager类的requestLocation方法，这个方法在获取到定位信息后就会关闭定位服务。  
+* 不使用时要及时的关闭定位服务。  
+* 使用尽可能低的定位精度，只要能满足需要即可。  
+* 设置location manager的pausesLocationUpdatesAutomatically和activityType两个属性，可以让location manager做适当的优化。  
+* 在后台运行时，允许延期的位置更新。  
+* 将定位更新限制在特定的区域或位置。  
+* 以上都不适合时，考虑注册Significant-Change Location Updates.  
+
+##### 传感器
+* 停止设备方向变化的通知  
+  如果当前APP或是界面只会停留在一个方向，可以临时关闭硬件。  
+  
+  ```
+  // Turn on the accelerometer
+  [[UIDevice currentDevice] beginGeneratingDeviceOrientationNotifications];
+  
+   // Turn off the accelerometer
+  [[UIDevice currentDevice] endGeneratingDeviceOrientationNotifications];
+  ```   
+  
+* 通过设置更新间隔，降低更新的次数  
+
+##### 蓝牙设备
+使用时要注意优化。
+
+##### 高效的使用网络
+##### 尽量减少定时器的使用
+##### 尽量减少I/O调用
+
+
+### UITableView有哪些优化的方案？
+
+## 架构
+### 如何创建CocoaPods私有仓库？
+可以看下面两篇文章：  
+[如何创建私有 CocoaPods 仓库](http://www.jianshu.com/p/ddc2490bff9f)  
+[CocoaPods创建私有Pods](http://www.liuchungui.com/blog/2015/10/19/cocoapodschuang-jian-si-you-pods/)  
+
+创建步骤总结：  
+1. 创建一个spec仓库，用来存放私有仓库的spec文件  
+2. 将这个私有的spec仓库，添加到CocoaPods
+   ```pod repo add REPO_NAME SOURCE_URL```   
+3. 生成代码库的spec文件，打tag，并push到私有spec仓库
+   ```pod repo push REPO_NAME SPEC_NAME.podspec```   
+4. 使用的时候，要在Podfile文件中同时添加本地私有源和官方源。如果没有添加本地私有源，它默认是用官方的repo，这样找不到本地的Pod；如果只是设置了本地私有源，就不会再去官方源中查找。
+   
+### 什么是组件化？如何实施呢？
+
+[iOS 组件化方案探索](https://wereadteam.github.io/2016/03/19/iOS-Component/)  
+[CTMediator](https://github.com/casatwy/CTMediator)  
+[在现有工程中实施基于CTMediator的组件化方案](https://casatwy.com/modulization_in_action.html)  
+
+然后，[iOS组件化方案调研](http://www.jianshu.com/p/34f23b694412)里有收集很多参考资料，有空时要系统的阅读。  
+
+读了[在现有工程中实施基于CTMediator的组件化方案](https://casatwy.com/modulization_in_action.html)一文后，有下述问题：  
+1) 可否将A_Category和B_Category合并为一个Pod?  
+答：不能，除非这两个pod彼此不能拆解。但是如果彼此不能拆解的话，就不应该出现两个category，应该只有一个才合理。  
+2）B_Category提供的服务和Target_B提供的服务是一样的，能不能把B_Category直接放到B的模块里替代Target_B？   
+答：不要这么做。category是业务无关的，target是业务相关的。外部只会通过category来调用功能，这样能够达到两个效果：1.某组件即使缺少依赖，也能编译通过。2.在Podfile中添加被依赖的组件后，不用修改任何代码，就能够正常调用被依赖的组件的功能。  
+这样才能做到完全解耦。  
+3) 组件划分的标准是什么？  
+答：考虑两点，1.这一部分是否能够自治，且相对独立。2.这一部分是否会被多个调用者调度。只要这二者有一个条件满足，那就会把这部分组件化出来，即使它只有一个对象不到50行代码。  
+
+组件化更多的是针对横向依赖做依赖下沉。业务相对于服务之间的依赖属于纵向依赖，把服务作为普通Pod引入即可。业务和业务之间是横向依赖，必须组件化。  
+
+4) 工程中的公用图片资源在组件化时应该怎么处理呢？
+答：我们是单独一个子工程，里面只有图片。然后在其它使用图片的子工程里，只把这个图片子工程写入Podfile，而不写入podspec的dependency里面，这样能确保调试的时候有图片，组件发版的时候不带图片。然后在主工程的Podfile里面同样也写入图片子工程，这样就好了。
+
+5) 组件的负责团队一般就只工作在组件工程里，里面除了组件自身，还有单元测试代码，一般保证自己工作正常就可以了。需要联调时，可以在Podfile里引入依赖的组件。
+
+### 基于CTMediator的组件化方案，有哪些核心组成？
+假如主APP调用某业务A，那么需要以下组成部分：  
+
+* CTMediator类，该类提供了函数 ```- (id)performTarget:(NSString *)targetName action:(NSString *)actionName params:(NSDictionary *)params shouldCacheTarget:(BOOL)shouldCacheTarget;```  
+这个函数可以根据targetName生成对象，根据actionName构造selector，然后可以利用performSelector:withObject:方法，在目标上执行动作。  
+
+* 业务A的实现代码，另外要加一个专门的类，用于执行Target Action  
+  类的名字的格式：`Target_%@`，这里就是Target_A。  
+  这个类里面的方法，名字都以`Action_`开头，需要传参数时，都统一以NSDictionary*的形式传入。  
+  CTMediator类会创建Target类的对象，并在对象上执行方法。  
+
+* 业务A的CTMediator扩展  
+  扩展里声明了所有A业务的对外接口，参数明确，这样外部调用者可以很容易理解如何调用接口。  
+  在扩展的实现里，对Target, Action需要通过硬编码进行指定。由于扩展的负责方和业务的负责方是相同的，所以这个不是问题。      
+ 
+
+### 什么情况下使用H5做页面比较合适？  
+Native的缺点：  
+App的发版周期偏长，有时无法跟上产品的更新节奏  
+灵活性差，如果有圈套的方案变更，需要发版才能解决  
+如果存在bug，无法在当前版本进行修复  
+需要根据不同的平台写不同的代码  
+
+H5的优点：  
+页面可以实时在服务端进行修改，灵活性很强，避免了Native发版周期带来的时间成本  
+
+H5的缺点：  
+弱网情况下体验较差  
+流量消耗较大  
+访问原生系统的能力受到限制  
+
+通常的经验是：对于一些比较稳定的业务，对用户体验要求较高的，可以选择Native开发。而对于一些业务变更比较快，处在不断试水的过程，而且不涉及调用文件系统和硬件调用的业务我们可以选择H5开发。  
+
 ### iOS中有哪些设计模式？
 
 ### iOS移动APP架构
