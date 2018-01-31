@@ -492,10 +492,24 @@ _isKVOA
 例如UIGestureRecognizer, UIControl都有addTarget:action:之类的方法，支持添加多于一个的target, action，在需要时通过[target persormSelector]来回调。  
 
 ### 简述一个进程的内存分区情况  
-1)代码区：存放函数二进制代码
-2)数据区：系统运行时申请内存并初始化，系统退出时由系统释放。存放全局变量、静态变量、常量
-3)堆区：通过malloc等函数或new等操作符动态申请得到，需程序员手动申请和释放
-4)栈区：函数模块内申请，函数结束时由系统自动释放。存放局部变量、函数参数
+![内存分区](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/进程内存分区.png)  
+从高地址到低地址分别为：栈、堆、BBS段、数据段、代码段
+
+提示：栈和堆是运行时分配，BBS段、数据段、代码段是编译器分配
+
+BBS段：通常是指用来存放程序中未初始化的全局变量和静态变量
+
+数据段：通常是指用来存放程序中已经初始化的全局变量和静态变量、字符串常量等
+
+代码段：通常是指用来存放程序执行代码的一块内存区域
+
+堆：是用于存放进程运行中被动态分配的内存段（调用malloc函数，新分配的内存动态添加到堆上；调用free函数，释放内存从堆中删除）
+
+栈：又称堆栈，是用户存放程序临时创建的局部变量
+
+在iOS中，堆区的内存是应用程序共享的，堆中的内存分配是系统负责的；   
+系统使用一个链表来维护所有已经分配的内存空间；  
+当一个app启动后，代码区，常量区，全局区大小已固定。而堆区和栈区是时时刻刻变化的。
 
 ### NSUserDefaults都可以存储哪些数据类型？
 float, double, iteger, boolean, URL, NSData, NSString, NSNumber, NSDate, NSArray, NSDictionary.
