@@ -669,8 +669,29 @@ if (!success) {
 所以一共有六个阶段；最后两个阶段在动画过程中不停地重复。前五个阶段都在软件层面处理（通过CPU），只有最后一个被GPU执行。而且，你真正只能控制前两个阶段：布局和显示。Core Animation框架在内部处理剩下的事务，你也控制不了它。
 
 ### 如何实现一个线程安全的NSMutableArray
-可以从NSMutableArray派生，但要根据苹果的文档，实现那些所谓的Primitive Methods。
-在这些方法的内部，加线程同步机制，比如锁。  
+可以从NSMutableArray派生，根据苹果的文档，要继承这样的类，需要实现NSMutableArray的Primitive Methods:  
+
+```
+- (void)addObject:(id)anObject;
+- (void)insertObject:(id)anObject atIndex:(NSUInteger)index;
+- (void)removeLastObject;
+- (void)removeObjectAtIndex:(NSUInteger)index;
+- (void)replaceObjectAtIndex:(NSUInteger)index withObject:(id)anObject;
+```
+
+以及NSArray的Primitive Methods:  
+
+```
+- (NSUInteger)count;
+- (id)objectAtIndex:(NSUInteger)index;
+```
+
+而要达到线程安全，不外乎就是在这些方法内部都加上锁，简化多线程情景下的容器使用，不必手动逐一添加锁。  
+在加锁时，选择递归锁会比较安全，以防以上函数有被另一个调用的危险。  
+
+但这样的做法并不推荐，原因就是因为性能问题。当你使用容器来频繁的处理大量数据则不推荐这样选择，仅当线程间的同步成了数据共享的瓶颈时，一个安全的容器类才有存在的价值。  
+
+以上内容，学习自[线程安全的可变容器类](http://www.tanhao.me/pieces/1633.html/)  
 
 ### NSTimer, CADisplayLink, `dispatch_source_t`，高精度定时器
 下述内容摘自博客文章：[更可靠和高精度的 iOS 定时器](http://blog.lessfun.com/blog/2016/08/05/reliable-timer-in-ios/)  
