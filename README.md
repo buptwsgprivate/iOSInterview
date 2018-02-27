@@ -33,167 +33,6 @@ ARC: 自动引用计数， MRC：手动引用计数
 ARC是一个编译器的特性。  
 ARC引入了一些新的修饰关键字，如strong, weak。  
 不管是ARC还是MRC，内存管理的方式并没有改变。
-  
-### @synthesize和@dynamic分别有什么作用？
-* @property有两个对应的词，一个是 @synthesize，一个是 @dynamic。如果 @synthesize和 @dynamic都没写，那么默认的就是@syntheszie var = _var;  
-* @synthesize 的语义是如果你没有手动实现 setter 方法和 getter 方法，那么编译器会自动为你加上这两个方法。  
-* @dynamic 告诉编译器：属性的 setter 与 getter 方法由用户自己实现，不自动生成。（当然对于 readonly 的属性只需提供 getter 即可）。假如一个属性被声明为 @dynamic var，然后你没有提供 @setter方法和 @getter 方法，编译的时候没问题，但是当程序运行到 instance.var = someVar，由于缺 setter 方法会导致程序崩溃；或者当运行到 someVar = var 时，由于缺 getter 方法同样会导致崩溃。编译时没问题，运行时才执行相应的方法，这就是所谓的动态绑定。  
-* @dynamic经常用于ManagedObject，一个属性的读取方法，由CoreData框架在运行时利用消息转发机制，动态的添加实现。  
-
-现在的Xcode，一般情况下是不需要我们再去写@synthesize了，但是还是会有以下的情况，需要我们去写：  
-1. 实现一个协议，协议中声明了有属性。  
-2. 
-
-### 线程同步工具都有哪些？
-主要有：Atomic Operations, Lock和Condition。  GCD中的group, barrier, semaphore也是用来在GCD中做同步的。
-#### 1. Atomic Operations  
-系统提供了一些原子性的数学运算和逻辑运算函数，声明在/usr/include/libkern/OSAtomic.h中。  原子操作的性能比锁要高。  
-这些函数分为以下类别：  
-Add: Adds two integer values together and stores the result in one of the specified variables.  
-Increment: Increments the specified integer value by 1.  
-Decrement: Decrements the specified integer value by 1.  
-Logical OR: Performs a logical OR between the specified 32-bit value and a 32-bit mask.     
-Logical AND: Performs a logical AND between the specified 32-bit value and a 32-bit mask.   
-Logical XOR: Performs a logical XOR between the specified 32-bit value and a 32-bit mask.  
-Compare and swap:    
-Test and set:   
-Test and clear:    
-
-#### 2. Using Locks  
-* Using a POSIX Mutex Lock   
-
-```
-pthread_mutex_t mutex;
-void MyInitFunction()
-{
-    pthread_mutex_init(&mutex, NULL);
-}
- 
-void MyLockingFunction()
-{
-    pthread_mutex_lock(&mutex);
-    // Do work.
-    pthread_mutex_unlock(&mutex);
-}
-```
-* Using the NSLock Class  
-基本的互斥锁，除了标准的加锁和解锁外，还提供了非阻塞的tryLock，设置超时的lockBeforeDate:  
-
-```
-BOOL moreToDo = YES;
-NSLock *theLock = [[NSLock alloc] init];
-...
-while (moreToDo) {
-    /* Do another increment of calculation */
-    /* until there’s no more to do. */
-    if ([theLock tryLock]) {
-        /* Update display used by all threads. */
-        [theLock unlock];
-    }
-}
-```
-
-* Using @synchronized  
-一个使用互斥锁的便利方式，使用括号中的对象作为锁的token。性能是最差的。 
-@synchronized 指令实现锁的优点就是我们不需要在代码中显式的创建锁对象，便可以实现锁的机制，但作为一种预防措施，@synchronized 块会隐式的添加一个异常处理例程来保护代码，该处理例程会在异常抛出的时候自动的释放互斥锁。所以如果不想让隐式的异常处理例程带来额外的开销，你可以考虑使用锁对象。     
-
-```
-- (void)myMethod:(id)anObj
-{
-    @synchronized(anObj)
-    {
-        // Everything between the braces is protected by the @synchronized directive.
-    }
-}
-```
-* NSRecursiveLock  
-递归锁，可以被同一线程加锁多次，而不会导致死锁问题。递归锁会追踪被加锁多少次，每次成功的加锁都得匹配一次解锁。只有加锁和解锁的次数相同，锁才会被释放，其它的线程才可以加锁成功。
-该锁经常使用在递归函数中。   
-
-```
-NSRecursiveLock *theLock = [[NSRecursiveLock alloc] init];
- 
-void MyRecursiveFunction(int value)
-{
-    [theLock lock];
-    if (value != 0)
-    {
-        --value;
-        MyRecursiveFunction(value);
-    }
-    [theLock unlock];
-}
- 
-MyRecursiveFunction(5);
-```
-* NSConditionLock  
-该类型的锁可以使用一个特定的值去加锁和解锁，一个典型的例子就是一个线程生产数据，另一个消费数据。  
-lockWhenCondition: 1 是指当前condition为1时，才能加锁成功。  
-unlockWithCondition: 1 是指解锁后，将condition置为1.
-
-```
-//生产者
-id condLock = [[NSConditionLock alloc] initWithCondition:NO_DATA];
- 
-while(true)
-{
-    [condLock lock];
-    /* Add data to the queue. */
-    [condLock unlockWithCondition:HAS_DATA];
-}
-```
-
-
-```
-//消费者
-while (true)
-{
-    [condLock lockWhenCondition:HAS_DATA];
-    /* Remove data from the queue. */
-    [condLock unlockWithCondition:(isEmpty ? NO_DATA : HAS_DATA)];
- 
-    // Process the data locally.
-}
-```
-
-#### 3. Using Conditions  
-一种特殊类型的锁，主要是用来同步操作执行的顺序。  
-A condition object acts as both a lock and a checkpoint in a given thread. The lock protects your code while it tests the condition and performs the task triggered by the condition. The checkpoint behavior requires that the condition be true before the thread proceeds with its task. While the condition is not true, the thread blocks. It remains blocked until another thread signals the condition object.  
-The semantics for using an NSCondition object are as follows:  
-1. Lock the condition object.  
-2. Test a boolean predicate. (This predicate is a boolean flag or other variable in your code that indicates whether it is safe to perform the task protected by the condition.)  
-3. If the boolean predicate is false, call the condition object’s wait or waitUntilDate: method to block the thread. Upon returning from these methods, go to step 2 to retest your boolean predicate. (Continue waiting and retesting the predicate until it is true.)  
-4. If the boolean predicate is true, perform the task.  
-5. Optionally update any predicates (or signal any conditions) affected by your task.  
-6. When your task is done, unlock the condition object.  
-
-Using a Cocoa condition：  
-
-```
-[cocoaCondition lock];
-while (timeToDoWork <= 0)
-    [cocoaCondition wait];
- 
-timeToDoWork--;
- 
-// Do real work here.
- 
-[cocoaCondition unlock];
-```
-
-Signaling a Cocoa condition:   
-
-```
-[cocoaCondition lock];
-timeToDoWork++;
-[cocoaCondition signal];
-[cocoaCondition unlock];
-```
-一次signal调用只能唤醒一个线程，而broadcoast则能唤醒所有的线程。
-
-### Lock与Condition的区别是什么？  
-一个Lock只能由一个线程加锁成功，其它的线程必须等待，直到其它线程释放锁。
-Condition相当于Lock + Condition，可以由多个线程加锁成功，加锁成功以后还需要检查condition是否满足，不满足的话需要一直wait。
 
 ### AutoreleasePool
 每个线程都需要自动释放池，否则无法处理被调用了autorelease方法的对象。  
@@ -203,6 +42,31 @@ Condition相当于Lock + Condition，可以由多个线程加锁成功，加锁�
 可以自己创建自动释放池的块，在块开始的时候，会PUSH一个自动释放池对象，在块结束的时候，会从栈中pop。
 自动释放池被pop的时候，会对它所包含的对象发送release消息。
 每次runloop迭代结束的时候，主线程会向自动释放池中的对象发送release消息。
+
+### @synthesize和@dynamic分别有什么作用？
+* @property有两个对应的词，一个是 @synthesize，一个是 @dynamic。如果 @synthesize和 @dynamic都没写，那么默认的就是@syntheszie var = _var;  
+* @synthesize 的语义是如果你没有手动实现 setter 方法和 getter 方法，那么编译器会自动为你加上这两个方法。  
+* @dynamic 告诉编译器：属性的 setter 与 getter 方法由用户自己实现，不自动生成。（当然对于 readonly 的属性只需提供 getter 即可）。假如一个属性被声明为 @dynamic var，然后你没有提供 @setter方法和 @getter 方法，编译的时候没问题，但是当程序运行到 instance.var = someVar，由于缺 setter 方法会导致程序崩溃；或者当运行到 someVar = var 时，由于缺 getter 方法同样会导致崩溃。编译时没问题，运行时才执行相应的方法，这就是所谓的动态绑定。  
+* @dynamic经常用于ManagedObject，一个属性的读取方法，由CoreData框架在运行时利用消息转发机制，动态的添加实现。  
+
+### 在有了自动合成属性实例变量之后，@synthesize还有哪些使用场景？
+现在的Xcode，一般情况下是不需要我们再去写@synthesize了，但是还是会有以下的情况，需要我们去写：  
+1. 实现一个协议，协议中声明了有属性。  
+2. 对于一个readwrite的属性，如果我们同时自己实现了getter和setter方法，会发现iVar是不存在的，这个时候还是需要去写。  
+3. 对于一个readonly的属性，如果我们实现了getter方法，会发现iVar是不存在的。  
+
+### 一个objc对象如何进行内存布局？（考虑有父类的情况）
+每个 Objective-C 对象都有相同的结构，如下图所示：  
+![OC对象内存布局](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/ObjectMemoryLayout.png)  
+
+* 所有父类的成员变量和自己的成员变量都会存放在该对象所对应的存储空间中.  
+* 每一个对象内部都有一个isa指针,指向他的类对象,类对象中存放着本对象的  
+  1)对象方法列表（对象能够接收的消息列表，保存在它所对应的类对象中）  
+  2)成员变量的列表  
+  3)属性列表  
+它内部也有一个isa指针指向元对象(meta class),元对象内部存放的是类方法列表,类对象内部还有一个superclass的指针,指向他的父类对象。  
+* 根对象就是NSObject，它的superclass指针指向nil  
+* 类对象既然称为对象，那它也是一个实例。类对象中也有一个isa指针指向它的元类(meta class)，即类对象是元类的实例。元类内部存放的是类方法列表，根元类的isa指针指向自己，superclass指针指向NSObject类。   
 
 ### .Method, SEL, IMP都是什么含义？
 ```
@@ -228,6 +92,40 @@ typedef id _Nullable (*IMP)(id _Nonnull, SEL _Nonnull, ...);
 ```
 ### .实例，类，元类的关系图   
 ![实例，类，元类关系图](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/instance_class_metaclass.png)
+
+### 下面的代码输出什么？
+
+```
+  @implementation Son : Father
+   - (id)init
+   {
+       self = [super init];
+       if (self) {
+           NSLog(@"%@", NSStringFromClass([self class]));
+           NSLog(@"%@", NSStringFromClass([super class]));
+       }
+       return self;
+   }
+   @end
+```
+网上的答案是，都输出Son。先来解释一下，两者都是调用的NSObject的实例方法class，区别是，[self class]是从类对象Son出发，寻找class方法的实现，而[super class]是从父类对象Father出发，寻找class方法的实现。如果在整个类层次中，没有类对class方法进行override，那么最终就会找到NSObject类中的实现：  
+
+```
+- (Class)class {
+   return object_getClass(self);
+}
+```
+
+答案确实是Son。  
+
+但是，假设Father类重写了class方法：  
+
+```
+- (Class)class {
+    return [NSString class];
+}
+```
+那么答案就会变成NSString.  
 
 ### OC的消息转发过程
 如果向一个对象发送一个不支持的消息，那么默认的实现是会调用NSObject类中的doesNotRecognizeSelector:方法，此方法会抛出异常，导致应用崩溃。
@@ -552,7 +450,7 @@ Core Graphics也叫Quartz 2D, 是一个先进的，二维绘图引擎，可以�
 三个核心概念：  
 上下文： 主要用于描述图形写入哪里  
 路径：是在图层上绘制的内容  
-状态：  用于保存配置变换的值，填充和alpha值等。  
+状态：用于保存配置变换的值，填充和alpha值等。  
 
 个人的理解：UIView会去利用Core Graphics去绘制，绘制好的内容交给Core Animation去做渲染。  
 
@@ -676,6 +574,157 @@ if (!success) {
 在屏幕上渲染可见的三角形  
 
 所以一共有六个阶段；最后两个阶段在动画过程中不停地重复。前五个阶段都在软件层面处理（通过CPU），只有最后一个被GPU执行。而且，你真正只能控制前两个阶段：布局和显示。Core Animation框架在内部处理剩下的事务，你也控制不了它。
+
+### 线程同步工具都有哪些？
+主要有：Atomic Operations, Lock和Condition。  GCD中的group, barrier, semaphore也是用来在GCD中做同步的。
+#### 1. Atomic Operations  
+系统提供了一些原子性的数学运算和逻辑运算函数，声明在/usr/include/libkern/OSAtomic.h中。  原子操作的性能比锁要高。  
+这些函数分为以下类别：  
+Add: Adds two integer values together and stores the result in one of the specified variables.  
+Increment: Increments the specified integer value by 1.  
+Decrement: Decrements the specified integer value by 1.  
+Logical OR: Performs a logical OR between the specified 32-bit value and a 32-bit mask.     
+Logical AND: Performs a logical AND between the specified 32-bit value and a 32-bit mask.   
+Logical XOR: Performs a logical XOR between the specified 32-bit value and a 32-bit mask.  
+Compare and swap:    
+Test and set:   
+Test and clear:    
+
+#### 2. Using Locks  
+* Using a POSIX Mutex Lock   
+
+```
+pthread_mutex_t mutex;
+void MyInitFunction()
+{
+    pthread_mutex_init(&mutex, NULL);
+}
+ 
+void MyLockingFunction()
+{
+    pthread_mutex_lock(&mutex);
+    // Do work.
+    pthread_mutex_unlock(&mutex);
+}
+```
+* Using the NSLock Class  
+基本的互斥锁，除了标准的加锁和解锁外，还提供了非阻塞的tryLock，设置超时的lockBeforeDate:  
+
+```
+BOOL moreToDo = YES;
+NSLock *theLock = [[NSLock alloc] init];
+...
+while (moreToDo) {
+    /* Do another increment of calculation */
+    /* until there’s no more to do. */
+    if ([theLock tryLock]) {
+        /* Update display used by all threads. */
+        [theLock unlock];
+    }
+}
+```
+
+* Using @synchronized  
+一个使用互斥锁的便利方式，使用括号中的对象作为锁的token。性能是最差的。 
+@synchronized 指令实现锁的优点就是我们不需要在代码中显式的创建锁对象，便可以实现锁的机制，但作为一种预防措施，@synchronized 块会隐式的添加一个异常处理例程来保护代码，该处理例程会在异常抛出的时候自动的释放互斥锁。所以如果不想让隐式的异常处理例程带来额外的开销，你可以考虑使用锁对象。     
+
+```
+- (void)myMethod:(id)anObj
+{
+    @synchronized(anObj)
+    {
+        // Everything between the braces is protected by the @synchronized directive.
+    }
+}
+```
+* NSRecursiveLock  
+递归锁，可以被同一线程加锁多次，而不会导致死锁问题。递归锁会追踪被加锁多少次，每次成功的加锁都得匹配一次解锁。只有加锁和解锁的次数相同，锁才会被释放，其它的线程才可以加锁成功。
+该锁经常使用在递归函数中。   
+
+```
+NSRecursiveLock *theLock = [[NSRecursiveLock alloc] init];
+ 
+void MyRecursiveFunction(int value)
+{
+    [theLock lock];
+    if (value != 0)
+    {
+        --value;
+        MyRecursiveFunction(value);
+    }
+    [theLock unlock];
+}
+ 
+MyRecursiveFunction(5);
+```
+* NSConditionLock  
+该类型的锁可以使用一个特定的值去加锁和解锁，一个典型的例子就是一个线程生产数据，另一个消费数据。  
+lockWhenCondition: 1 是指当前condition为1时，才能加锁成功。  
+unlockWithCondition: 1 是指解锁后，将condition置为1.
+
+```
+//生产者
+id condLock = [[NSConditionLock alloc] initWithCondition:NO_DATA];
+ 
+while(true)
+{
+    [condLock lock];
+    /* Add data to the queue. */
+    [condLock unlockWithCondition:HAS_DATA];
+}
+```
+
+
+```
+//消费者
+while (true)
+{
+    [condLock lockWhenCondition:HAS_DATA];
+    /* Remove data from the queue. */
+    [condLock unlockWithCondition:(isEmpty ? NO_DATA : HAS_DATA)];
+ 
+    // Process the data locally.
+}
+```
+
+#### 3. Using Conditions  
+一种特殊类型的锁，主要是用来同步操作执行的顺序。  
+A condition object acts as both a lock and a checkpoint in a given thread. The lock protects your code while it tests the condition and performs the task triggered by the condition. The checkpoint behavior requires that the condition be true before the thread proceeds with its task. While the condition is not true, the thread blocks. It remains blocked until another thread signals the condition object.  
+The semantics for using an NSCondition object are as follows:  
+1. Lock the condition object.  
+2. Test a boolean predicate. (This predicate is a boolean flag or other variable in your code that indicates whether it is safe to perform the task protected by the condition.)  
+3. If the boolean predicate is false, call the condition object’s wait or waitUntilDate: method to block the thread. Upon returning from these methods, go to step 2 to retest your boolean predicate. (Continue waiting and retesting the predicate until it is true.)  
+4. If the boolean predicate is true, perform the task.  
+5. Optionally update any predicates (or signal any conditions) affected by your task.  
+6. When your task is done, unlock the condition object.  
+
+Using a Cocoa condition：  
+
+```
+[cocoaCondition lock];
+while (timeToDoWork <= 0)
+    [cocoaCondition wait];
+ 
+timeToDoWork--;
+ 
+// Do real work here.
+ 
+[cocoaCondition unlock];
+```
+
+Signaling a Cocoa condition:   
+
+```
+[cocoaCondition lock];
+timeToDoWork++;
+[cocoaCondition signal];
+[cocoaCondition unlock];
+```
+一次signal调用只能唤醒一个线程，而broadcoast则能唤醒所有的线程。
+
+### Lock与Condition的区别是什么？  
+一个Lock只能由一个线程加锁成功，其它的线程必须等待，直到其它线程释放锁。
+Condition相当于Lock + Condition，可以由多个线程加锁成功，加锁成功以后还需要检查condition是否满足，不满足的话需要一直wait。
 
 ### 如何实现一个线程安全的NSMutableArray
 可以从NSMutableArray派生，根据苹果的文档，要继承这样的类，需要实现NSMutableArray的Primitive Methods:  
@@ -1166,7 +1215,7 @@ TCP协议发送的数据，是流式的，没有保护消息边界。所谓的�
 
 ## 针对项目的问题  
 ### 礼物相关
-*  普通礼物是采用的什么方案？如果是序列帧，那么帧率是多少？每张图片多大？ 
+*  普通礼物是采用的什么方案？如果是序列帧，那么帧率是多少？每张图片多大？   
    采用的是序列帧的方案，FPS设定为8，图片大小是700x450。
 *  一个礼物压缩包是多大？  
    这个根据礼物的动画帧数的多少而不同。
