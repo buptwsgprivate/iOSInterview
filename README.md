@@ -14,7 +14,7 @@
 ### 做个自我介绍吧。
 教育经历：本科在重庆邮电大学，硕士在北京邮电大学，都是计算机专业。  
 
-工作经历：早期一直使用C/C++语言，先后工作于威盛电子，索尼爱立信，诺基亚公司，从事移动端APP开发。在诺基亚裁员后，从2012年开始转型iOS平台，作为合伙人创办北京龙景科技，开发iOS平台上的应用和游戏项目。2015年末公司关闭后，于2016年初来到花椒直播，作为高级iOS，参与APP的研发。  
+工作经历：早期一直使用C/C++语言，先后工作于威盛电子，诺基亚公司，从事移动端APP开发。在诺基亚裁员后，从2012年开始转型iOS平台，作为合伙人创办北京龙景科技，开发iOS平台上的应用和游戏项目。2015年末公司关闭后，于2016年初来到花椒直播，作为高级iOS，参与APP的研发。  
 
 项目经历：在花椒，独立开发了花椒监控APP，参与很多业务功能的开发，直播间内外都有。另外还开发了防崩溃，卡顿分析，防止NSTimer的循环引用，以及一些基础组件。  
 
@@ -34,6 +34,15 @@ ARC是一个编译器的特性。
 ARC引入了一些新的修饰关键字，如strong, weak。  
 不管是ARC还是MRC，内存管理的方式并没有改变。
   
+### @synthesize和@dynamic分别有什么作用？
+* @property有两个对应的词，一个是 @synthesize，一个是 @dynamic。如果 @synthesize和 @dynamic都没写，那么默认的就是@syntheszie var = _var;  
+* @synthesize 的语义是如果你没有手动实现 setter 方法和 getter 方法，那么编译器会自动为你加上这两个方法。  
+* @dynamic 告诉编译器：属性的 setter 与 getter 方法由用户自己实现，不自动生成。（当然对于 readonly 的属性只需提供 getter 即可）。假如一个属性被声明为 @dynamic var，然后你没有提供 @setter方法和 @getter 方法，编译的时候没问题，但是当程序运行到 instance.var = someVar，由于缺 setter 方法会导致程序崩溃；或者当运行到 someVar = var 时，由于缺 getter 方法同样会导致崩溃。编译时没问题，运行时才执行相应的方法，这就是所谓的动态绑定。  
+* @dynamic经常用于ManagedObject，一个属性的读取方法，由CoreData框架在运行时利用消息转发机制，动态的添加实现。  
+
+现在的Xcode，一般情况下是不需要我们再去写@synthesize了，但是还是会有以下的情况，需要我们去写：  
+1. 实现一个协议，协议中声明了有属性。  
+2. 
 
 ### 线程同步工具都有哪些？
 主要有：Atomic Operations, Lock和Condition。  GCD中的group, barrier, semaphore也是用来在GCD中做同步的。
@@ -692,6 +701,8 @@ if (!success) {
 但这样的做法并不推荐，原因就是因为性能问题。当你使用容器来频繁的处理大量数据则不推荐这样选择，仅当线程间的同步成了数据共享的瓶颈时，一个安全的容器类才有存在的价值。  
 
 以上内容，学习自[线程安全的可变容器类](http://www.tanhao.me/pieces/1633.html/)  
+
+### 进程与线程的区别？并行与并发的区别？
 
 ### NSTimer, CADisplayLink, `dispatch_source_t`，高精度定时器
 下述内容摘自博客文章：[更可靠和高精度的 iOS 定时器](http://blog.lessfun.com/blog/2016/08/05/reliable-timer-in-ios/)  
