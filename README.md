@@ -127,6 +127,16 @@ typedef id _Nullable (*IMP)(id _Nonnull, SEL _Nonnull, ...);
 ```
 那么答案就会变成NSString.  
 
+### `_objc_msgForward`函数是做什么的，直接调用它将会发生什么？
+`_objc_msgForward`是一个函数指针，IMP类型，用于消息转发的。当向一个对象发送一条消息，但它并没有实现的时候，会用这个函数来尝试做消息转发。  
+在消息传递的过程中，`objc_msgSend`的动作比较清晰：首先在Class中的缓存查找IMP（没缓存则初始化缓存），如果没找到，则向父类的Class查找。如果一直查找到根类仍旧没有实现，则用`_objc_msgForward`函数指针代替IMP。最后，执行这个IMP。  
+
+执行的过程，就是下道题目的消息转发过程。  
+
+直接调用该函数，是非常危险的事，如果用不好会直接导致程序崩溃，但是如果用得好，可以做很多非常酷的事。一旦调用该函数，将跳过查找IMP的过程，直接触发“消息转发”。有哪些场景需要直接调用该函数呢？最常见的场景是：你想获取某方法所对应的NSInvocation对象。  
+[JSPatch](https://github.com/bang590/JSPatch)就是直接调用该函数来实现其核心功能的。作者的博文[《JSPatch实现原理详解》](http://blog.cnbang.net/tech/2808/)详细记录了实现原理，有兴趣的可以看看。   
+[RAC](https://github.com/ReactiveCocoa/ReactiveCocoa)源码中也用到了该方法。  
+
 ### OC的消息转发过程
 如果向一个对象发送一个不支持的消息，那么默认的实现是会调用NSObject类中的doesNotRecognizeSelector:方法，此方法会抛出异常，导致应用崩溃。
 但是runtime在此之前，会给3次机会。  
