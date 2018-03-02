@@ -194,6 +194,17 @@ self.tc = [TestClass new];
 用图来总结：  
 ![消息转发](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/message_forwarding.png)
 
+### Method Swizzle的实质是什么？
+该特性的实质是，为类添加一个新的方法，然后将目标方法和新的方法的IMP进行互换，结果就是修改selector和IMP的对应关系。
+
+### 能否向编译后得到的类中增加实例变量？能否向运行时创建的类中添加实例变量？为什么？
+- 不能向编译后得到的类中增加实例变量；  
+- 能向运行时创建的类中添加实例变量；  
+解释下：  
+因为编译后的类已经注册在 runtime 中，类结构体中的 `objc_ivar_list` 实例变量的链表 和 `instance_size` 实例变量的内存大小已经确定，同时runtime 会调用 `class_setIvarLayout` 或 `class_setWeakIvarLayout` 来处理 strong weak 引用。所以不能向存在的类中添加实例变量；
+
+运行时创建的类是可以添加实例变量，调用 `class_addIvar` 函数。但是得在调用 `objc_allocateClassPair` 之后，`objc_registerClassPair` 之前，原因同上。
+
 ### weak如何实现
 runtime对注册的类会进行布局，对于weak修饰的对象会放入一个hash表中。用weak指向的对象内存地址作为key，当此对象的引用计数为0的时候会dealloc，假如weak指向的对象内存地址是a，那么就会以a为键在这个weak表中搜索，找到所有以a为键的weak对象，从而设置为nil。
 
@@ -233,9 +244,6 @@ initialize: 当一个类，或是它的子类在接收到第一个消息之前�
     return firstNameHash ^ lastNameHash ^ ageHash;
 }
 ```
-
-### Method Swizzle的实质是什么？
-该特性的实质是，为类添加一个新的方法，然后将目标方法和新的方法的IMP进行互换，结果就是修改selector和IMP的对应关系。
 
 ### Block深入
 Block本身是对象，下图描述了Block对象的内存布局：  
@@ -282,6 +290,50 @@ void(^deliveryBlock)(void) = ^{NSLog(@"%lf",f);};
 NSLog(@"%@", deliveryBlock);
 ```
 经打印得知，只有第一次打印输出类型为__NSStackBlock__, 其它的两次都变成了__NSMallocBlock__。所以栈上的Block，在ARC环境下，一经赋值，copy，参数传递，就都变成了堆上的Block。  
+
+
+### 使用系统的某些block api（如UIView的block版本写动画时），是否也考虑引用循环问题？
+系统的某些block api中，UIView的block版本写动画时不需要考虑，但也有一些api 需要考虑：
+
+所谓“引用循环”是指双向的强引用，所以那些“单向的强引用”（block 强引用 self ）没有问题，比如这些：  
+
+```
+[UIView animateWithDuration:duration animations:^{ [self.superview layoutIfNeeded]; }];   
+[[NSOperationQueue mainQueue] addOperationWithBlock:^{ self.someProperty = xyz; }]; 
+[[NSNotificationCenter defaultCenter] addObserverForName:@"someNotification" 
+                                                 object:nil 
+                          queue:[NSOperationQueue mainQueue]
+                                             usingBlock:^(NSNotification * notification) {
+                                                   self.someProperty = xyz; }]; 
+
+```
+这些情况不需要考虑“引用循环”。  
+但如果你使用一些参数中可能含有 ivar 的系统 api ，如 GCD 、NSNotificationCenter就要小心一点：比如GCD 内部如果引用了 self，而且 GCD 的其他参数是 ivar，则要考虑到循环引用：  
+
+```
+__weak __typeof__(self) weakSelf = self;
+dispatch_group_async(_operationsGroup, _operationsQueue, ^
+{
+__typeof__(self) strongSelf = weakSelf;
+[strongSelf doSomething];
+[strongSelf doSomethingElse];
+} );
+```
+
+类似的：  
+
+```
+__weak __typeof__(self) weakSelf = self;
+ _observer = [[NSNotificationCenter defaultCenter] addObserverForName:@"testKey"
+                                                               object:nil
+                                                                queue:nil
+                                                           usingBlock:^(NSNotification *note) {
+     __typeof__(self) strongSelf = weakSelf;
+     [strongSelf dismissModalViewControllerAnimated:YES];
+ }];
+```
+
+self --> _observer --> block --> self 显然这也是一个循环引用。
 
 ### KVC的原理
 Key-Value Coding:   
