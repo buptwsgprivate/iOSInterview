@@ -172,6 +172,7 @@ self.tc = [TestClass new];
 **第3次 完整转发流程**
 
 ```
+必须override这个方法，消息转发过程利用这个函数返回的信息，来创建NSInvocation对象。  
 - (NSMethodSignature*)methodSignatureForSelector:(SEL)aSelector {
     if (aSelector == @selector(logString:)) {
         return [self.tc methodSignatureForSelector: aSelector];
@@ -222,6 +223,7 @@ load:
       当一个类或是分类被加载进runtime的时候，会被调用load方法。  
       父类的load方法先被调用，子类的load方法之后被调用。   
       分类的load方法在类的load方法之后被调用。    
+      load方法的调用，在main()函数被调用之前。 
       
 initialize: 当一个类，或是它的子类在接收到第一个消息之前，这个类都会收到initialize消息。  
             父类先收到消息，然后是子类。
