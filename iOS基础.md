@@ -198,6 +198,13 @@ self.tc = [TestClass new];
 ### Method Swizzle的实质是什么？
 该特性的实质是，为类添加一个新的方法，然后将目标方法和新的方法的IMP进行互换，结果就是修改selector和IMP的对应关系。
 
+### objc中向一个nil对象发送消息将会发生什么？（返回值是对象，是标量，结构体）
+在 Objective-C 中向 nil 发送消息是完全有效的——只是在运行时不会有任何作用。  
+当返回值是对象类型时，返回nil;  
+当返回值是标量，如整型时，返回0；  
+当返回值是结构体时，会返回一个结构体对象，不过里面的成员的值都为0.  
+如果返回值不是以上几种情况，那么返回的结果就是未定义的。  
+
 ### 能否向编译后得到的类中增加实例变量？能否向运行时创建的类中添加实例变量？为什么？
 - 不能向编译后得到的类中增加实例变量；  
 - 能向运行时创建的类中添加实例变量；  
@@ -205,6 +212,56 @@ self.tc = [TestClass new];
 因为编译后的类已经注册在 runtime 中，类结构体中的 `objc_ivar_list` 实例变量的链表 和 `instance_size` 实例变量的内存大小已经确定，同时runtime 会调用 `class_setIvarLayout` 或 `class_setWeakIvarLayout` 来处理 strong weak 引用。所以不能向存在的类中添加实例变量；
 
 运行时创建的类是可以添加实例变量，调用 `class_addIvar` 函数。但是得在调用 `objc_allocateClassPair` 之后，`objc_registerClassPair` 之前，原因同上。
+
+### 运行时能向类增加属性吗？编译后得到的类和运行时创建的类都讲一下。
+可以添加。代码如下：  
+
+```
+#include <objc/runtime.h>
+#import <Foundation/Foundation.h>
+
+@interface SomeClass : NSObject {
+    NSString *_privateName;
+}
+@end
+
+@implementation SomeClass
+- (id)init {
+    self = [super init];
+    if (self) _privateName = @"Steve";
+    return self;
+}
+@end
+
+NSString *nameGetter(id self, SEL _cmd) {
+    Ivar ivar = class_getInstanceVariable([SomeClass class], "_privateName");
+    return object_getIvar(self, ivar);
+}
+
+void nameSetter(id self, SEL _cmd, NSString *newName) {
+    Ivar ivar = class_getInstanceVariable([SomeClass class], "_privateName");
+    id oldName = object_getIvar(self, ivar);
+    if (oldName != newName) object_setIvar(self, ivar, [newName copy]);
+}
+
+int main(void) {
+    @autoreleasepool {
+        objc_property_attribute_t type = { "T", "@\"NSString\"" };
+        objc_property_attribute_t ownership = { "C", "" }; // C = copy
+        objc_property_attribute_t backingivar  = { "V", "_privateName" };
+        objc_property_attribute_t attrs[] = { type, ownership, backingivar };
+        class_addProperty([SomeClass class], "name", attrs, 3);
+        class_addMethod([SomeClass class], @selector(name), (IMP)nameGetter, "@@:");
+        class_addMethod([SomeClass class], @selector(setName:), (IMP)nameSetter, "v@:@");
+
+        id o = [SomeClass new];
+        NSLog(@"%@", [o name]);
+        [o setName:@"Jobs"];
+        NSLog(@"%@", [o name]);
+    }
+}
+```
+
 
 ### weak如何实现
 runtime对注册的类会进行布局，对于weak修饰的对象会放入一个hash表中。用weak指向的对象内存地址作为key，当此对象的引用计数为0的时候会dealloc，假如weak指向的对象内存地址是a，那么就会以a为键在这个weak表中搜索，找到所有以a为键的weak对象，从而设置为nil。
@@ -218,12 +275,26 @@ atomic只能保证单步操作的原子性，因此，对于简单的赋值或�
 
 所以，最好的做法是为方法加前缀，避免发生覆盖。
 
+### 分类是如何实现的？它为什么会覆盖掉原来的方法？
+关于实现原理，可以看下面的两篇文章：  
+[深入理解Objective-C：Category](https://tech.meituan.com/DiveIntoCategory.html)  
+[Objective-C Category 的实现原理](http://blog.leichunfeng.com/blog/2015/05/18/objective-c-category-implementation-principle/)  
+
+简单的来说，就是在加载的时候，分类中的方法会被添加到类的方法列表中。  
+实际的结果是：  
+
+* 分类中的方法没有“完全替换掉”原来类中已经有的方法，也就是说如果分类和原来的类都有methodA，那么分类附加完成之后，类的方法列表里会有两个methodA。  
+* 分类的方法被放到了新方法列表的前面，而原来类的方法被放到了新方法列表的后面，这也就是我们平常所说的category的方法会“覆盖”掉原来类的同名方法，这是因为运行时在查找方法的时候是顺着方法列表的顺序查找的，它只要一找到对应名字的方法，就会停止。
+
+因此，原来的方法还是可以被调用到的，只要利用运行时获得方法列表，查找到最后一个就是了。
+
 ### +initialize和+load都是什么？有什么区别？
 load:     
       当一个类或是分类被加载进runtime的时候，会被调用load方法。  
       父类的load方法先被调用，子类的load方法之后被调用。   
       分类的load方法在类的load方法之后被调用。    
-      load方法的调用，在main()函数被调用之前。 
+      load方法的调用，在main()函数被调用之前。  
+      一个类有多个分类时，根据编译顺序，调用相应分类的load方法。  
       
 initialize: 当一个类，或是它的子类在接收到第一个消息之前，这个类都会收到initialize消息。  
             父类先收到消息，然后是子类。
@@ -336,6 +407,8 @@ __weak __typeof__(self) weakSelf = self;
 ```
 
 self --> _observer --> block --> self 显然这也是一个循环引用。
+
+### 为什么在默认情况下无法修改被block捕获的变量？ __block都做了什么？
 
 ### KVC的原理
 Key-Value Coding:   
@@ -789,6 +862,8 @@ Condition相当于Lock + Condition，可以由多个线程加锁成功，加锁�
 以上内容，学习自[线程安全的可变容器类](http://www.tanhao.me/pieces/1633.html/)  
 
 ### 进程与线程的区别？并行与并发的区别？
+
+### AFN为什么添加一条常驻线程？
 
 ### NSTimer, CADisplayLink, `dispatch_source_t`，高精度定时器
 下述内容摘自博客文章：[更可靠和高精度的 iOS 定时器](http://blog.lessfun.com/blog/2016/08/05/reliable-timer-in-ios/)  
