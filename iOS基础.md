@@ -7,14 +7,60 @@ ARC是一个编译器的特性。
 ARC引入了一些新的修饰关键字，如strong, weak。  
 不管是ARC还是MRC，内存管理的方式并没有改变。
 
-### AutoreleasePool
+### AutoreleasePool 简述
 每个线程都需要自动释放池，否则无法处理被调用了autorelease方法的对象。  
 在main.m中，主线程已经包含了一个自动释放池的块。  
 使用GCD, Operation这些多线程技术时，线程里面也会包含自动释放池的块。  
 自动释放池可以有多个，形成一个栈的结构。  
-可以自己创建自动释放池的块，在块开始的时候，会PUSH一个自动释放池对象，在块结束的时候，会从栈中pop。
-自动释放池被pop的时候，会对它所包含的对象发送release消息。
-每次runloop迭代结束的时候，主线程会向自动释放池中的对象发送release消息。
+可以自己创建自动释放池的块，在块开始的时候，会PUSH一个自动释放池对象，在块结束的时候，会从栈中pop。  
+自动释放池被pop的时候，会对它所包含的对象发送release消息。  
+使用容器的block版本的枚举器时，内部会自动添加一个AutoreleasePool，所以建议使用这个API来进行循环。  
+
+>The Application Kit creates an autorelease pool on the main thread at the beginning of every cycle of the event loop, and drains it at the end, thereby releasing any autoreleased objects generated while processing an event
+
+在开始每一个事件循环之前系统会在主线程创建一个自动释放池, 并且在事件循环结束的时候把前面创建的释放池释放, 回收内存。  
+
+### AutoreleasePool实现原理 
+
+#### AutoreleasePoolPage
+ARC下，我们使用@autoreleasepool{}来使用一个AutoReleasePool，随后编译器将其改写成下面的样子：  
+
+```
+void *context = objc_autoreleasePoolPush();
+// {}中的代码
+objc_autoreleasePoolPop(context);
+```
+而这两个函数都是对AutoreleasePoolPage的简单封装，所以自动释放机制的核心就在于这个类。  
+AutoreleasePoolPage是一个C++实现的类：  
+![类结构](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/AutoreleasePollPage%20Class.jpg)
+
+* AutoreleasePool并没有单独的结构，而是由若干个AutoreleasePoolPage以双向链表的形式组合而成（分别对应结构中的parent指针和child指针）  
+*  AutoreleasePool是按线程一一对应的，结构中的thread指针指向当前线程。  
+*  AutoreleasePoolPage每个对象会开辟4096字节内存（也就是虚拟内存一页的大小），除了上面的实例变量所占空间，剩下的空间全部用来存储autorelease对象的地址。  
+*  上面的id *next指针作为游标指向栈顶最新add进来的autorelease对象的下一个位置  
+*  一个AutoreleasePoolPage的空间被占满时，会新建一个AutoreleasePoolPage对象，连接链表，后来的autorelease对象在新的page加入  
+
+所以，若当前线程中只有一个AutoreleasePoolPage对象，并记录了很多autorelease对象地址时内存如下图：  
+![马上要满](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/AutoreleasePoolPage.jpg)  
+图中的情况，这一页再加入一个autorelease对象就要满了（也就是next指针马上指向栈顶），这时就要执行上面说的操作，建立下一页page对象，与这一页链表连接完成后，新page的next指针被初始化在栈底（begin的位置），然后继续向栈顶添加新对象。
+
+所以，向一个对象发送- autorelease消息，就是将这个对象加入到当前AutoreleasePoolPage的栈顶next指针指向的位置。  
+
+#### 释放时刻
+每当进行一次objc_autoreleasePoolPush调用时，runtime向当前的AutoreleasePoolPage中add进一个哨兵对象，值为0（也就是个nil），那么这一个page就变成了下面的样子：  
+
+![push](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/AutoreleasePoolPage%20Push.jpg)  
+
+objc_autoreleasePoolPush的返回值正是这个哨兵对象的地址，被objc_autoreleasePoolPop(哨兵对象)作为入参，于是：
+
+根据传入的哨兵对象地址找到哨兵对象所处的page
+在当前page中，将晚于哨兵对象插入的所有autorelease对象都发送一次- release消息，并向回移动next指针到正确位置
+补充2：从最新加入的对象一直向前清理，可以向前跨越若干个page，直到哨兵所在的page
+刚才的objc_autoreleasePoolPop执行后，最终变成了下面的样子：  
+![pop](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/AutoreleasePoolPage%20Pop.jpg)  
+
+#### 嵌套的AutoreleasePool
+知道了上面的原理，嵌套的AutoreleasePool就非常简单了，pop的时候总会释放到上次push的位置为止，多层的pool就是多个哨兵对象而已，就像剥洋葱一样，每次一层，互不影响。  
 
 ### @synthesize和@dynamic分别有什么作用？
 * @property有两个对应的词，一个是 @synthesize，一个是 @dynamic。如果 @synthesize和 @dynamic都没写，那么默认的就是@syntheszie var = _var;  
@@ -306,7 +352,7 @@ initialize: 当一个类，或是它的子类在接收到第一个消息之前�
 * 若想检测对象的等同性，需要同时提供isEqual:和hash两个方法。
 * 相同的对象必须具有相同的哈希码，但是两个哈希码相同的对象却未必相同，这种情况发生时叫碰撞。
 * hash值用于确定对象在哈希表中的位置。
-* 不要盲目地爱个检测每条属性，而是应该依照具体需求来制定检测方案。
+* 不要盲目地逐个检测每条属性，而是应该依照具体需求来制定检测方案。
 * 编写hash方法时，应该使用性能好而且哈希码碰撞几率低的算法。一个例子是：
 
 ```
