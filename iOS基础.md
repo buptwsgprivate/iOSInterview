@@ -21,14 +21,33 @@ ARC引入了一些新的修饰关键字，如strong, weak。
 在开始每一个事件循环之前系统会在主线程创建一个自动释放池, 并且在事件循环结束的时候把前面创建的释放池释放, 回收内存。  
 
 ### AutoreleasePool实现原理 
+关于原理，看下面两篇文章，应该能够搞定面试了：  
+[黑幕背后的Autorelease](https://blog.sunnyxx.com/2014/10/15/behind-autorelease/)  
+[Objective-C Autorelease Pool 的实现原理](http://blog.leichunfeng.com/blog/2015/05/31/objective-c-autorelease-pool-implementation-principle/)  
 
 #### AutoreleasePoolPage
 ARC下，我们使用@autoreleasepool{}来使用一个AutoReleasePool，随后编译器将其改写成下面的样子：  
 
 ```
-void *context = objc_autoreleasePoolPush();
-// {}中的代码
-objc_autoreleasePoolPop(context);
+extern "C" __declspec(dllimport) void * objc_autoreleasePoolPush(void);
+extern "C" __declspec(dllimport) void objc_autoreleasePoolPop(void *);
+
+struct __AtAutoreleasePool {
+  __AtAutoreleasePool() {atautoreleasepoolobj = objc_autoreleasePoolPush();}
+  ~__AtAutoreleasePool() {objc_autoreleasePoolPop(atautoreleasepoolobj);}
+  void * atautoreleasepoolobj;
+};
+
+/* @autoreleasepool */ { __AtAutoreleasePool __autoreleasepool;
+
+}
+
+//简化的版本：  
+/* @autoreleasepool */ {
+    void *atautoreleasepoolobj = objc_autoreleasePoolPush();
+    // 用户代码，所有接收到 autorelease 消息的对象会被添加到这个 autoreleasepool 中
+    objc_autoreleasePoolPop(atautoreleasepoolobj);
+}
 ```
 而这两个函数都是对AutoreleasePoolPage的简单封装，所以自动释放机制的核心就在于这个类。  
 AutoreleasePoolPage是一个C++实现的类：  
@@ -37,8 +56,9 @@ AutoreleasePoolPage是一个C++实现的类：
 * AutoreleasePool并没有单独的结构，而是由若干个AutoreleasePoolPage以双向链表的形式组合而成（分别对应结构中的parent指针和child指针）  
 *  AutoreleasePool是按线程一一对应的，结构中的thread指针指向当前线程。  
 *  AutoreleasePoolPage每个对象会开辟4096字节内存（也就是虚拟内存一页的大小），除了上面的实例变量所占空间，剩下的空间全部用来存储autorelease对象的地址。  
-*  上面的id *next指针作为游标指向栈顶最新add进来的autorelease对象的下一个位置  
+* 上面的id *next指针作为游标指向栈顶最新add进来的autorelease对象的下一个位置。当 next == begin() 时，表示 AutoreleasePoolPage 为空；当 next == end() 时，表示 AutoreleasePoolPage 已满。     
 *  一个AutoreleasePoolPage的空间被占满时，会新建一个AutoreleasePoolPage对象，连接链表，后来的autorelease对象在新的page加入  
+*  Thread-local storage（线程局部存储）指向 hot page ，即最新添加的 autoreleased 对象所在的那个 page 。  
 
 所以，若当前线程中只有一个AutoreleasePoolPage对象，并记录了很多autorelease对象地址时内存如下图：  
 ![马上要满](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/AutoreleasePoolPage.jpg)  
@@ -1076,6 +1096,8 @@ func backgroundContextDidSave(notification: NSNotification){
   2）fetch时尽可能精准，少引入不相关的数据。  
   3）构建多context时尽量将同类managed object集中，最大限度减少合并需求。  
   4）提升操作效率，对Asynchronous Fetch, Batch Update, Batch Delete等新特性尽可能利用。
+
+### iOS中的Event Handling，Responder Chain
 
 ### 常见的加密算法？对称加密和非对称加密的区别。  
 对称加密：  
