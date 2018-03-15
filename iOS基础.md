@@ -750,6 +750,12 @@ if (!success) {
 
 所以一共有六个阶段；最后两个阶段在动画过程中不停地重复。前五个阶段都在软件层面处理（通过CPU），只有最后一个被GPU执行。而且，你真正只能控制前两个阶段：布局和显示。Core Animation框架在内部处理剩下的事务，你也控制不了它。
 
+### 卡顿产生的原因
+![掉帧](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/ios_frame_drop.png)  
+在 VSync 信号到来后，系统图形服务会通过 CADisplayLink 等机制通知 App，App 主线程开始在 CPU 中计算显示内容，比如视图的创建、布局计算、图片解码、文本绘制等。随后 CPU 会将计算好的内容提交到 GPU 去，由 GPU 进行变换、合成、渲染。随后 GPU 会把渲染结果提交到帧缓冲区去，等待下一次 VSync 信号到来时显示到屏幕上。由于垂直同步的机制，如果在一个 VSync 时间内，CPU 或者 GPU 没有完成内容提交，则那一帧就会被丢弃，等待下一次机会再显示，而这时显示屏会保留之前的内容不变。这就是界面卡顿的原因。
+
+从上面的图中可以看到，CPU 和 GPU 不论哪个阻碍了显示流程，都会造成掉帧现象。所以开发时，也需要分别对 CPU 和 GPU 压力进行评估和优化。  
+
 ### 线程同步工具都有哪些？
 主要有：Atomic Operations, Lock和Condition。  GCD中的group, barrier, semaphore也是用来在GCD中做同步的。
 #### 1. Atomic Operations  
@@ -1097,6 +1103,24 @@ func backgroundContextDidSave(notification: NSNotification){
   4）提升操作效率，对Asynchronous Fetch, Batch Update, Batch Delete等新特性尽可能利用。
 
 ### iOS中的Event Handling，Responder Chain
+![iOS中的职责链](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/iOS%20Responder%20Chain.png)  
+![触摸事件派发](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/Handling%20Event.png)
+
+iOS中的响应者对象可能是UIView及其子类，UIViewController, UIWindow, UIApplication, AppDelegate。  
+UIView:  
+如果视图是ViewController的根视图，下一个响应者为ViewController，否者是视图的父视图。  
+UIViewController:  
+UIViewController的nextResponder属性为其管理view的superview.   
+UIWindow:  
+下一个响应者为UIApplication对象  
+UIApplication:  
+下一个响应者为app delegate，但是代理应该是UIResponder的一个实例  
+AppDelegate:  
+下一个响应者应该是nil。
+
+职责链是如何建立起来的呢？  
+我们的app中，所有的视图都是按照一定的结构组织起来的，即树状层次结构，每个view都有自己的superView，包括controller的topmost view(controller的self.view)。当一个view被add到superView上的时候，他的nextResponder属性就会被指向它的superView，当controller被初始化的时候，self.view(topmost view)的nextResponder会被指向所在的controller，而controller的nextResponder会被指向self.view的superView，这样，整个app就通过nextResponder串成了一条链，也就是我们所说的响应链。所以响应链就是一条虚拟的链，并没有一个对象来专门存储这样的一条链，而是通过UIResponder的属性串连起来的。如第一张图所示。  
+
 
 ### 常见的加密算法？对称加密和非对称加密的区别。  
 对称加密：  
