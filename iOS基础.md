@@ -1113,6 +1113,10 @@ UIApplication:
 AppDelegate:  
 下一个响应者应该是nil。
 
+职责链是如何建立起来的呢？  
+我们的app中，所有的视图都是按照一定的结构组织起来的，即树状层次结构，每个view都有自己的superView，包括controller的topmost view(controller的self.view)。当一个view被add到superView上的时候，他的nextResponder属性就会被指向它的superView，当controller被初始化的时候，self.view(topmost view)的nextResponder会被指向所在的controller，而controller的nextResponder会被指向self.view的superView，这样，整个app就通过nextResponder串成了一条链，也就是我们所说的响应链。所以响应链就是一条虚拟的链，并没有一个对象来专门存储这样的一条链，而是通过UIResponder的属性串连起来的。如第一张图所示。  
+
+
 ### 常见的加密算法？对称加密和非对称加密的区别。  
 对称加密：  
 这类算法在加密和解决时使用相同的密钥  
