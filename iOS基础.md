@@ -1098,6 +1098,20 @@ func backgroundContextDidSave(notification: NSNotification){
   4）提升操作效率，对Asynchronous Fetch, Batch Update, Batch Delete等新特性尽可能利用。
 
 ### iOS中的Event Handling，Responder Chain
+![iOS中的职责链](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/iOS%20Responder%20Chain.png)  
+![触摸事件派发](https://github.com/buptwsgprivate/iOSInterview/blob/master/Images/Handling%20Event.png)
+
+iOS中的响应者对象可能是UIView及其子类，UIViewController, UIWindow, UIApplication, AppDelegate。  
+UIView:  
+如果视图是ViewController的根视图，下一个响应者为ViewController，否者是视图的父视图。  
+UIViewController:  
+UIViewController的nextResponder属性为其管理view的superview.   
+UIWindow:  
+下一个响应者为UIApplication对象  
+UIApplication:  
+下一个响应者为app delegate，但是代理应该是UIResponder的一个实例  
+AppDelegate:  
+下一个响应者应该是nil。
 
 ### 常见的加密算法？对称加密和非对称加密的区别。  
 对称加密：  
