@@ -1053,26 +1053,6 @@ void dispatch_set_target_queue(dispatch_object_t object, dispatch_queue_t queue)
 
 为了避免这个问题的出现，在使用GCD时，总是使用默认优先级的队列，即使不同的优先级看起来很好。    
 
-### 写一下hitTest函数的实现代码  
-```
-- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
-    if (!self.isUserInteractionEnabled || self.isHidden || self.alpha <= 0.01) {
-        return nil;
-    }
-    if ([self pointInside:point withEvent:event]) {
-        for (UIView *subview in [self.subviews reverseObjectEnumerator]) {
-            CGPoint convertedPoint = [subview convertPoint:point fromView:self];
-            UIView *hitTestView = [subview hitTest:convertedPoint withEvent:event];
-            if (hitTestView) {
-                return hitTestView;
-            }
-        }
-        return self;
-    }
-    return nil;
-}
-```
-
 ### Core Data大量数据多线程同步
 1. 搭建多线程环境  
    另外创建NSManagedObjectContext时，指定并发模式为NSPrivateQueueConcurrencyType，这样context会创建并管理一个private queue.  
@@ -1121,6 +1101,42 @@ AppDelegate:
 职责链是如何建立起来的呢？  
 我们的app中，所有的视图都是按照一定的结构组织起来的，即树状层次结构，每个view都有自己的superView，包括controller的topmost view(controller的self.view)。当一个view被add到superView上的时候，他的nextResponder属性就会被指向它的superView，当controller被初始化的时候，self.view(topmost view)的nextResponder会被指向所在的controller，而controller的nextResponder会被指向self.view的superView，这样，整个app就通过nextResponder串成了一条链，也就是我们所说的响应链。所以响应链就是一条虚拟的链，并没有一个对象来专门存储这样的一条链，而是通过UIResponder的属性串连起来的。如第一张图所示。  
 
+### 写一下hitTest函数的实现代码  
+```
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    if (!self.isUserInteractionEnabled || self.isHidden || self.alpha <= 0.01) {
+        return nil;
+    }
+    if ([self pointInside:point withEvent:event]) {
+        for (UIView *subview in [self.subviews reverseObjectEnumerator]) {
+            CGPoint convertedPoint = [subview convertPoint:point fromView:self];
+            UIView *hitTestView = [subview hitTest:convertedPoint withEvent:event];
+            if (hitTestView) {
+                return hitTestView;
+            }
+        }
+        return self;
+    }
+    return nil;
+}
+```
+
+### NSDictionary内部是如何存储的？
+有一篇[很牛的文章](http://ciechanowski.me/blog/2014/04/08/exposing-nsdictionary/)，对NSDictionary做了分析。  
+没有细看，简单总结一下：  
+对象的内存布局中，在实例变量的后面，还可以有更多的额外字节，这段内在的地址可以由`void * object_getIndexedIvars(id obj);`来返回。  
+这段内存以key1, object1, key2, object2,...的方式存储所有的(key, value).  
+下面上图。  
+![Keys and objects are stored alternately](http://ciechanowski.me/images/dictionaryLayout@2x.jpg)  
+Keys and objects are stored alternately  
+
+
+![When the key slot is empty, nil is returned](http://ciechanowski.me/images/dictionaryMiss@2x.jpg)  
+When the key slot is empty, nil is returned  
+
+
+![Key found after one collision](http://ciechanowski.me/images/dictionaryHit@2x.jpg)  
+Key found after one collision  
 
 ### 常见的加密算法？对称加密和非对称加密的区别。  
 对称加密：  
