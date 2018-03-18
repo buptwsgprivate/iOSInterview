@@ -397,7 +397,9 @@ descriptor变量是指向结构体的指针，每个块里都包含此结构体�
 * 全局Block  
 
 ```
+    int global = 0;
     void (^globalBlock)(void) = ^{
+        global = 100;
         NSLog(@"This is a block");
     };
     NSLog(@"global block is kind of class: %@", [globalBlock class]);
@@ -683,6 +685,16 @@ webViewDidFinishLoad这个方法是在web的window.onload以后才调用（也�
     _context[@"ttf"] = jsObject;	//将对象注入这个context中
 }
 ```
+
+### JS调用OC，UIWebView与WKWebView有什么不同？
+UIWebView: 通过注入到JSContext的JSExport对象的名字，调用上面的约定方法。  
+WKWebView: JS端调用window.webkit.messageHandlers.myName.postMessage(message);  
+           而在Native端，会去执行  
+           
+           ```
+           - (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(nonnull WKScriptMessage *)message
+           ```
+           
 
 ### 数据库的数据迁移场景及实现
 * 在Core Data打开一个store的时候，如果老版本的格式，与新的模型不兼容，那么需要执行数据迁移，如果不执行，那么会发生崩溃。
@@ -1141,6 +1153,17 @@ When the key slot is empty, nil is returned
 
 ![Key found after one collision](http://ciechanowski.me/images/dictionaryHit@2x.jpg)  
 Key found after one collision  
+
+### Universal link是什么？有什么好处？
+当app支持universal link时，用户可以点击到你站点的链接，然后跳转到安装的app，这个过程中不需要经过Safari。如果app没有安装，那么会在safari中打开链接。  
+universal link相比custom URL schemes, 有以下好处：  
+
+* 唯一性。Custom URL schemes由于是自定义的，多个APP之间就有可能产生冲突。而universal link就不会，因为使用了到自己站点的链接。  
+* 安全性。iOS在打开安装的APP之前，会先去你的web server去检查一个文件的内容，看你的站点是否允许你的应用打开这个链接。而只有开发者可以创建和上传这个文件，所以站点和APP之间的关联是安全的。
+* 灵活性。在APP没有安装的情况下，universal link也是工作的。这时会在safari中打开链接。
+* 简单性。一个URL可以同时用于website和APP。
+* 私密性。其它的app和你的APP通信时，不需要知道你的APP是否已经安装。
+
 
 ### 常见的加密算法？对称加密和非对称加密的区别。  
 对称加密：  
