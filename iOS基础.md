@@ -478,6 +478,17 @@ self --> _observer --> block --> self 显然这也是一个循环引用。
 
 ### 为什么在默认情况下无法修改被block捕获的变量？ __block都做了什么？
 
+### GCD相关
+
+```
+	//假设从主线程开始执行
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        NSLog(@"222");
+    });
+    NSLog(@"1");
+```
+上面代码执行后的打印顺序是什么? 经测试结果是:输出顺序不固定,如果dispatch\_async执行完,如全局并发队列分配到时间片则先会打印222再打印1, 如没分配到则先打印1再打印222. 如将global\_queue换成自定义的串行队列也是同样的结果.
+
 ### KVC的原理
 Key-Value Coding:   
 通过key来访问一个对象的属性或是实例变量的值，而不是通过具体的访问方法。  
