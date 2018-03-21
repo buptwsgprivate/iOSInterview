@@ -490,6 +490,13 @@ __weak __typeof__(self) weakSelf = self;
 self --> _observer --> block --> self 显然这也是一个循环引用。
 
 ### 为什么在默认情况下无法修改被block捕获的变量？ __block都做了什么？
+想要学习的话，可以看下面两篇文章：  
+[深入解构iOS的block闭包实现原理](http://www.cocoachina.com/ios/20170711/19806.html)  
+[深入研究Block捕获外部变量和__block实现原理](https://halfrost.github.io/2016/08/深入研究Block捕获外部变量和__block实现原理/)  
+简单的来说，没有加`__block`时，外部变量被只是值被拷贝到了block中，在block的函数内，访问的是一个副本。  
+当加了`__block`时，外部变量会被包装到一个结构体中，在block内部和外部，访问的都是同一结构体中的变量，因此可以在block内部修改外部变量的值。
+
+这个只有一家问到了，觉得了解就行了。  
 
 ### GCD相关
 
