@@ -335,6 +335,19 @@ runtime对注册的类会进行布局，对于weak修饰的对象会放入一个
 ### 用于修饰属性的atomic关键字
 atomic只能保证属性系统生成的set/get方法读写线程安全，对属性发送其他消息如release等等，还是需要lock等其它的同步机制来确保线程安全。
 
+### NSString用copy和retain修饰
+```
+@property (nonatomic, copy) NSString         *name;
+
+NSString *str = @"Alice";
+self.name = str;
+NSString *str2 = self.name;
+NSLog(@"%p", str);	//0x1000782f8
+NSLog(@"%p", _name); //0x1000782f8
+NSLog(@"%p", str2);	//0x1000782f8
+```
+name属性分别用copy和retain修饰有什么不同? 运行上述程序发现三个字符串指向同一地址,因为string常量池的存在, 对于NSString来说copy和retain的操作都只是对其引用计数+1.
+
 ### 分类(Category)中定义了和原有方法重名的方法，会是什么效果？
 将分类中的方法加入类中这一操作，是在运行期系统加载分类时完成的。运行期系统会把分类中所实现的每个方法都加入类的方法列表中。如果类中本来就有此方法，而分类又实现了一次，那么分类中的方法会覆盖原来那一份实现代码。实际上可能会发生很多次覆盖，比如某个分类中的方法覆盖了“主实现”中的相关方法，而另外一个分类中的方法又覆盖了这个分类中的方法。多次覆盖的结果以最后一个分类为准。
 
