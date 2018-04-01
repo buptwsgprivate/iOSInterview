@@ -7,6 +7,107 @@ ARC是一个编译器的特性。
 ARC引入了一些新的修饰关键字，如strong, weak。  
 不管是ARC还是MRC，内存管理的方式并没有改变。
 
+### 在ARC环境下，runtime如何对autorelease返回值进行优化
+在ARC下，runtime有一套对autorelease返回值的优化策略。  
+比如一个工厂方法：  
+
+```
++ (instancetype)createSark {
+    return [self new];
+}
+// caller
+Sark *sark = [Sark createSark];
+```
+
+秉着谁创建谁释放的原则，返回值需要是一个autorelease对象才能配合调用方正确管理内存，于是乎编译器改写成了形如下面的代码：  
+
+```
++ (instancetype)createSark {
+    id tmp = [self new];  //被retain
+    return objc_autoreleaseReturnValue(tmp); // 代替我们调用autorelease
+}
+// caller
+id tmp = objc_retainAutoreleasedReturnValue([Sark createSark]) // 代替我们调用retain
+Sark *sark = tmp;
+objc_storeStrong(&sark, nil); // 相当于代替我们调用了release
+```
+一切看上去都很好，不过既然编译器知道了这么多信息，干嘛还要劳烦autorelease这个开销不小的机制呢？于是乎，runtime使用了一些黑魔法将这个问题解决了。  
+
+* 黑魔法之Thread Local Storage  
+  Thread Local Storage（TLS）线程局部存储，目的很简单，将一块内存作为某个线程专有的存储，以key-value的形式进行读写，比如在非arm架构下，使用pthread提供的方法实现：  
+  
+  ```
+  void* pthread_getspecific(pthread_key_t);  
+  int pthread_setspecific(pthread_key_t , const void *);
+  ```
+  
+  说它是黑魔法可能被懂pthread的笑话。
+
+在返回值身上调用`objc_autoreleaseReturnValue`方法时，runtime将这个返回值object储存在TLS中，然后直接返回这个object（不调用autorelease）；同时，在外部接收这个返回值的`objc_retainAutoreleasedReturnValue`里，发现TLS中正好存了这个对象，那么直接返回这个object（不调用retain）。
+于是乎，调用方和被调方利用TLS做中转，很有默契的免去了对返回值的内存管理。
+
+于是问题又来了，假如被调方和主调方只有一边是ARC环境编译的该咋办？（比如我们在ARC环境下用了非ARC编译的第三方库，或者反之）
+只能动用更高级的黑魔法。
+
+* 黑魔法之`__builtin_return_address`  
+这个内建函数原型是`char *__builtin_return_address(int level)`，作用是得到函数的返回地址，参数表示层数，如`__builtin_return_address(0)`表示当前函数体返回地址，传1是调用这个函数的外层函数的返回值地址，以此类推。
+
+```
+- (int)foo {
+    NSLog(@"%p", __builtin_return_address(0)); // 根据这个地址能找到下面ret的地址
+    return 1;
+}
+// caller
+int ret = [sark foo];
+```
+
+看上去也没啥厉害的，不过要知道，函数的返回值地址，也就对应着调用者结束这次调用的地址（或者相差某个固定的偏移量，根据编译器决定）
+也就是说，被调用的函数也有翻身做地主的机会了，可以反过来对主调方干点坏事。
+回到上面的问题，如果一个函数返回前知道调用方是ARC还是非ARC，就有机会对于不同情况做不同的处理。  
+
+* 黑魔法之反查汇编指令  
+通过上面的`__builtin_return_address`加某些偏移量，被调方可以定位到主调方在返回值后面的汇编指令：  
+
+```
+// caller
+int ret = [sark foo];
+// 内存中接下来的汇编指令（x86，我不懂汇编，瞎写的）
+movq ??? ???
+callq ???
+```
+
+而这些汇编指令在内存中的值是固定的，比如movq对应着0x48。
+于是乎，就有了下面的这个函数，入参是调用方`__builtin_return_address`传入值。  
+
+```
+static bool callerAcceptsFastAutorelease(const void * const ra0) {
+    const uint8_t *ra1 = (const uint8_t *)ra0;
+    const uint16_t *ra2;
+    const uint32_t *ra4 = (const uint32_t *)ra1;
+    const void **sym;
+    // 48 89 c7    movq  %rax,%rdi
+    // e8          callq symbol
+    if (*ra4 != 0xe8c78948) {
+        return false;
+    }
+    ra1 += (long)*(const int32_t *)(ra1 + 4) + 8l;
+    ra2 = (const uint16_t *)ra1;
+    // ff 25       jmpq *symbol@DYLDMAGIC(%rip)
+    if (*ra2 != 0x25ff) {
+        return false;
+    }
+    ra1 += 6l + (long)*(const int32_t *)(ra1 + 2);
+    sym = (const void **)ra1;
+    if (*sym != objc_retainAutoreleasedReturnValue)
+    {
+        return false;
+    }
+    return true;
+}
+```
+
+它检验了主调方在返回值之后是否紧接着调用了`objc_retainAutoreleasedReturnValue`，如果是，就知道了外部是ARC环境，反之就走没被优化的老逻辑。
+
 ### AutoreleasePool 简述
 每个线程都需要自动释放池，否则无法处理被调用了autorelease方法的对象。  
 在main.m中，主线程已经包含了一个自动释放池的块。  
