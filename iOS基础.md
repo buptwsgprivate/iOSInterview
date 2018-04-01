@@ -433,6 +433,8 @@ int main(void) {
 ### weak如何实现
 runtime对注册的类会进行布局，对于weak修饰的对象会放入一个hash表中。用weak指向的对象内存地址作为key，当此对象的引用计数为0的时候会dealloc，假如weak指向的对象内存地址是a，那么就会以a为键在这个weak表中搜索，找到所有以a为键的weak对象，从而设置为nil。
 
+其中会用到`id objc_storeWeak(id  _Nullable *location, id obj);`这个函数，在初始化的时候，第二个参数非空；在指向的对象析构的时候，第2个参数为nil。  
+
 ### 用于修饰属性的atomic关键字
 atomic只能保证属性系统生成的set/get方法读写线程安全，对属性发送其他消息如release等等，还是需要lock等其它的同步机制来确保线程安全。
 
@@ -1249,6 +1251,12 @@ AppDelegate:
 职责链是如何建立起来的呢？  
 我们的app中，所有的视图都是按照一定的结构组织起来的，即树状层次结构，每个view都有自己的superView，包括controller的topmost view(controller的self.view)。当一个view被add到superView上的时候，他的nextResponder属性就会被指向它的superView，当controller被初始化的时候，self.view(topmost view)的nextResponder会被指向所在的controller，而controller的nextResponder会被指向self.view的superView，这样，整个app就通过nextResponder串成了一条链，也就是我们所说的响应链。所以响应链就是一条虚拟的链，并没有一个对象来专门存储这样的一条链，而是通过UIResponder的属性串连起来的。如第一张图所示。  
 
+### Responder Chain的一些应用场景
+* 可以为UIView扩展一个viewController方法，利用responder链条，可以得到视图所属的view controller.
+* casa大神博客里有篇文章：[一种基于ResponderChain的对象交互方式](https://casatwy.com/responder_chain_communication.html)提到了一种新的交互方式。
+
+在商品详情页中使用了这种对象交互方式：商品详情页有各种cell，每个cell上面又有各种button事件，每个Cell也有各自的子View，子View中也有button事件需要传递，而cell本身也需要响应点击事件。在这种复杂且多层级UI事件场景下，如果用delegate的方式层层传递，代码确实不如用Responder Chain的事件交互方式容易维护。用block的话，事件处理逻辑就会被分散在各个对象生成的地方。用Notification则更加不合适了，毕竟它并不属于一对多的逻辑，如若其他业务工程师在其它地方也监听了这个Notification，事件处理逻辑就会变得极为难以管理。
+
 ### 写一下hitTest函数的实现代码  
 ```
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
@@ -1272,7 +1280,7 @@ AppDelegate:
 ### NSDictionary内部是如何存储的？
 有一篇[很牛的文章](http://ciechanowski.me/blog/2014/04/08/exposing-nsdictionary/)，对NSDictionary做了分析。  
 没有细看，简单总结一下：  
-对象的内存布局中，在实例变量的后面，还可以有更多的额外字节，这段内在的地址可以由`void * object_getIndexedIvars(id obj);`来返回。  
+对象的内存布局中，在实例变量的后面，还可以有更多的额外字节，这段内存的地址可以由`void * object_getIndexedIvars(id obj);`来返回。  
 这段内存以key1, object1, key2, object2,...的方式存储所有的(key, value).  
 下面上图。  
 ![Keys and objects are stored alternately](http://ciechanowski.me/images/dictionaryLayout@2x.jpg)  
