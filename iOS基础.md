@@ -648,6 +648,69 @@ self --> _observer --> block --> self 显然这也是一个循环引用。
 ```
 上面代码执行后的打印顺序是什么? 经测试结果是:输出顺序不固定,如果dispatch\_async执行完,如全局并发队列分配到时间片则先会打印222再打印1, 如没分配到则先打印1再打印222. 如将global\_queue换成自定义的串行队列也是同样的结果.
 
+### dispatch_once使用时要注意的地方
+下面的代码，会造成死锁（真机）/ 崩溃（模拟器）：  
+
+```
+#import "ManageA.h"
+
+@implementation ManageA
+
++ (ManageA *)sharedInstance
+{
+    static ManageA *manager = nil;
+    static dispatch_once_t token;
+
+    dispatch_once(&token, ^{
+        manager = [[ManageA alloc] init];
+    });
+
+    return manager;
+}
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        [ManageB sharedInstance];
+    }
+    return self;
+}
+
+@end
+
+@implementation ManageB
+
++ (ManageB *)sharedInstance
+{
+    static ManageB *manager = nil;
+    static dispatch_once_t token;
+
+    dispatch_once(&token, ^{
+        manager = [[ManageB alloc] init];
+    });
+
+    return manager;
+}
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        [ManageA sharedInstance];
+    }
+    return self;
+}
+@end
+```
+上面的代码，会导致ManagerA的`dispatch_once`的block里，再次调用ManagerA的`dispatch_once`，出现重入现象，导致死锁。这个死锁的原理，非常类似于`dispatch_sync(dispatch_get_main_queue)`。  
+
+所以在使用时，要注意：  
+
+* block代码里尽量只做初始化的事情，不要调用很多其它的方法。 
+* block中的代码尽量不要抛出异常，不要Crash。[Bugly和dispatch_once Crash](http://www.cnblogs.com/chims-liu-touch/p/7574985.html)
+
+
 ### KVC的原理
 Key-Value Coding:   
 通过key来访问一个对象的属性或是实例变量的值，而不是通过具体的访问方法。  
