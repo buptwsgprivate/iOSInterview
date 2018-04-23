@@ -1156,6 +1156,10 @@ timeToDoWork++;
 一个Lock只能由一个线程加锁成功，其它的线程必须等待，直到其它线程释放锁。
 Condition相当于Lock + Condition，可以由多个线程加锁成功，加锁成功以后还需要检查condition是否满足，不满足的话需要一直wait。
 
+### 常见锁的性能比较
+盗用YY博客中的图：  
+![性能比较](https://blog.ibireme.com/wp-content/uploads/2016/01/lock_benchmark.png)
+
 ### 如何实现一个线程安全的NSMutableArray
 可以从NSMutableArray派生，根据苹果的文档，要继承这样的类，需要实现NSMutableArray的Primitive Methods:  
 
