@@ -1380,6 +1380,69 @@ AppDelegate:
 }
 ```
 
+### Runloop
+一些讲的比较好的文章收集：  
+
+* [深入理解 RunLoop](http://honglu.me/2017/03/30/深入理解RunLoop/)  
+* [iOS刨根问底-深入理解RunLoop]（https://www.cnblogs.com/kenshincui/p/6823841.html）  
+* [解密-神秘的 RunLoop](http://ios.jobbole.com/85635/)
+* [Run Loop 记录与源码注释](https://github.com/Desgard/iOS-Source-Probe/blob/master/Objective-C/Foundation/Run%20Loop%20记录与源码注释.md)  
+* [https://blog.ibireme.com/2015/05/18/runloop/](https://blog.ibireme.com/2015/05/18/runloop/)  
+
+#### 事件驱动模型
+事件驱动模型，相比于轮询等其他方式，其优点在于极大的提高了CPU使用率，在没有事件的时候，能够让出CPU时间片，来事件时也可以快速的得到响应。  
+
+#### Cocoa中的RunLoop
+NSRunLoop是CFRunLoop的高层抽象，runloop在cocoa中的应用相当广泛。  
+
+NSTimer，UIEvent，NSObject (NSDelayedPerforming)，NSObject (NSThreadPerformAdditions)，NSURLConnection 是通过 Source 的机制把事件加入到 RunLoop 中。
+
+Autorelease，CADisplayLink，CATransition，CAAnimation 则是利用 observer 的机制，在 RunLoop 的循环周期中执行各自的操作。
+
+更加底层的 GCD，mach kernel 也与 RunLoop 存在协作关系。
+
+#### 关于InputSource的类型
+Inputsources异步的发送事件到一个线程。有两种类型：基于port的input source监视应用的Mach ports；自定义的input source监视自定义的事件源。这两种类型的input source的唯一区别在于信号是怎么发出的。基于port的源由内核自动的发出信号；自定义的源必须从另一个线程手动的发出信号。  
+
+由于CFRunloop的源码中有source0, source1这样的字眼，所以有些文章中，也将基于port的源称之为source1；而将自定义的源称之为source0。  
+
+自定义的输入源中，有一种是我们平常会用到的，即是下面这些函数：  
+
+```
+performSelectorOnMainThread:withObject:waitUntilDone:  
+
+performSelectorOnMainThread:withObject:waitUntilDone:modes:  
+
+performSelector:onThread:withObject:waitUntilDone:  
+
+performSelector:onThread:withObject:waitUntilDone:modes:  
+
+performSelector:withObject:afterDelay:  
+
+performSelector:withObject:afterDelay:inModes:  
+```
+
+要注意的是，上面的这些函数要想能够正常工作，目标线程必须有一个活动的run loop。否则selector是不会被执行的。也就是说，在下面的代码中，test方法并不会被执行。  
+
+```
+    dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0);
+    dispatch_async(queue, ^{
+        [self performSelector: @selector(test) withObject: nil afterDelay: 2];
+    });
+    
+    - (void)test {
+    NSLog(@"test");
+}
+```
+
+#### NSTimer与GCD Timer
+NSTimer的执行必须依赖于RunLoop，也就是说，在一个创建的后台线程里，如果不创建并启动RunLoop，那么timer的回调方法是不会被执行的。  
+
+GCD Timer是通过dispatch port给Run Loop发送消息，来使RunLoop执行相应的block。如果所在线程没有RunLoop，那么GCD会临时创建一个线程去执行block，执行完之后再销毁掉，因此GCD的Timer是不依赖RunLoop的。
+
+
+
+
 ### NSDictionary内部是如何存储的？
 有一篇[很牛的文章](http://ciechanowski.me/blog/2014/04/08/exposing-nsdictionary/)，对NSDictionary做了分析。  
 没有细看，简单总结一下：  
