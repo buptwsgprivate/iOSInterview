@@ -1384,7 +1384,7 @@ AppDelegate:
 一些讲的比较好的文章收集：  
 
 * [深入理解 RunLoop](http://honglu.me/2017/03/30/深入理解RunLoop/)  
-* [iOS刨根问底-深入理解RunLoop]（https://www.cnblogs.com/kenshincui/p/6823841.html）  
+* [iOS刨根问底-深入理解RunLoop](https://www.cnblogs.com/kenshincui/p/6823841.html)
 * [解密-神秘的 RunLoop](http://ios.jobbole.com/85635/)
 * [Run Loop 记录与源码注释](https://github.com/Desgard/iOS-Source-Probe/blob/master/Objective-C/Foundation/Run%20Loop%20记录与源码注释.md)  
 * [https://blog.ibireme.com/2015/05/18/runloop/](https://blog.ibireme.com/2015/05/18/runloop/)  
@@ -1440,8 +1440,15 @@ NSTimer的执行必须依赖于RunLoop，也就是说，在一个创建的后台
 
 GCD Timer是通过dispatch port给Run Loop发送消息，来使RunLoop执行相应的block。如果所在线程没有RunLoop，那么GCD会临时创建一个线程去执行block，执行完之后再销毁掉，因此GCD的Timer是不依赖RunLoop的。
 
+#### AutoreleasePool
+iOS应用启动后会注册两个Observer管理和维护AutoreleasePool。
 
+第一个Observer会监听RunLoop的进入，它会回调`objc_autoreleasePoolPush()`向当前的AutoreleasePoolPage增加一个哨兵对象标志创建自动释放池。这个观察者的order是-2147483647优先级最高，确保发生在所有回调操作之前。 
 
+第二个Observer会监听RunLoop的即将进入休眠和即将退出RunLoop两种状态。在即将进入休眠时会调用`objc_autoreleasePoolPop()`和`objc_autoreleasePoolPush()`根据情况从最新加入的对象一直往前清理，直到遇到哨兵对象。而在即将退出RunLoop时会调用`objc_autoreleasePoolPop()`释放自动释放池对象。这个观察者的order是2147483647，优先级最低，确保发生在所有回调操作之后。
+
+#### UI更新
+有一个Observer，专门负责UI变化后的更新，比如修改了frame、调整了UI层级（UIView/CALayer）或者手动设置了setNeedsDisplay/setNeedsLayout之后就会将这些操作提交到全局容器。而这个Observer监听了主线程RunLoop的即将进入休眠和退出状态，一旦进入这两种状态则会遍历所有的UI更新并提交进行实际绘制更新。
 
 ### NSDictionary内部是如何存储的？
 有一篇[很牛的文章](http://ciechanowski.me/blog/2014/04/08/exposing-nsdictionary/)，对NSDictionary做了分析。  
