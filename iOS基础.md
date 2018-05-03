@@ -1438,7 +1438,7 @@ performSelector:withObject:afterDelay:inModes:
 #### NSTimer与GCD Timer
 NSTimer的执行必须依赖于RunLoop，也就是说，在一个创建的后台线程里，如果不创建并启动RunLoop，那么timer的回调方法是不会被执行的。  
 
-GCD Timer是通过dispatch port给Run Loop发送消息，来使RunLoop执行相应的block。如果所在线程没有RunLoop，那么GCD会临时创建一个线程去执行block，执行完之后再销毁掉，因此GCD的Timer是不依赖RunLoop的。
+GCD Timer是通过dispatch port给Run Loop发送消息，来使RunLoop执行相应的block。如果所在线程没有RunLoop，那么GCD会临时创建一个线程去执行block，执行完之后再销毁掉，因此GCD的Timer是不依赖RunLoop的。并且在有RunLoop的情况下，也不受所处的mode的影响。
 
 #### AutoreleasePool
 iOS应用启动后会注册两个Observer管理和维护AutoreleasePool。
