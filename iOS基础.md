@@ -1477,11 +1477,6 @@ universal link相比custom URL schemes, 有以下好处：
 * 简单性。一个URL可以同时用于website和APP。
 * 私密性。其它的app和你的APP通信时，不需要知道你的APP是否已经安装。
 
-### 在Swift中如何使用runtime
-对于基类是NSObject的类，可以直接使用。  
-对于Swift中的类，在属性和方法之前加上@objc关键字, 则一般情况下可以在runtime中使用了. 但有一些情况下, Swift会做静态优化而无法使用runtime.  
-要想完全使得属性和方法被动态调用, 必须使用dynamic关键字. 而dynamic关键字会隐式地加上@objc来修饰.
-
 ### 常见的加密算法？对称加密和非对称加密的区别。  
 对称加密：  
 这类算法在加密和解密时使用相同的密钥。  
