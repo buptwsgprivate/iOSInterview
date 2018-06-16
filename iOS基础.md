@@ -7,6 +7,24 @@ ARC是一个编译器的特性。
 ARC引入了一些新的修饰关键字，如strong, weak。  
 不管是ARC还是MRC，内存管理的方式并没有改变。
 
+### OC的动态语言特性，体现在哪些方面？
+* 动态类型
+  动态类型指的是对象指针类型的动态性，具体是指使用id任意类型将对象的类型确定推迟到运行时，由赋给它的对象类型，决定对象指针的类型。与动态类型相对，其它的指明类型的对象为静态类型对象。静态类型的好处是，错误可以在编译阶段提前查出，可读性好。  
+  一个id类型的对象，Xcode的代码提示功能，可以提示常用的方法。因此下面的代码，编译阶段不会有任何的警告。  
+  
+  ```
+    // 1.id任意类型，编译器就不会把testObject在当成NSString对象了
+    id testObject = [[NSData alloc] init];
+    // 2.调用NSData的方法编译通过
+    [testObject base64EncodedDataWithOptions:NSDataBase64Encoding64CharacterLineLength];
+    // 3.调用NSString的方法编译也通过
+    [testObject stringByAppendingString:@"string"];
+  ```
+  
+* 动态绑定
+  动态绑定是指方法确定的动态性，一方面利用OC的消息传递机制和转发机制，将要执行的方法的确定推迟到运行时；另一方面可以利用runtime为一个类动态的添加方法。也就是说，一个OC对象在运行时，具体是调用哪个方法，不是由编译器决定的，而是在运行时决定的。   
+  这个特性决定了，在OC里面，所有的方法都是虚函数(C++中的概念)。
+
 ### 在ARC环境下，runtime如何对autorelease返回值进行优化
 在ARC下，runtime有一套对autorelease返回值的优化策略。  
 比如一个工厂方法：  
